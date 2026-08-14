@@ -1,6 +1,11 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from services.trip_service import calculate_daily_budget, get_trip_category
+
+from services.trip_service import (
+    calculate_daily_budget,
+    get_trip_category,
+    get_transportation_recommendation,
+)
 
 
 class TripRequest(BaseModel):
@@ -15,23 +20,31 @@ class TripRequest(BaseModel):
 
 app = FastAPI()
 
-
 # a GET endpoint at the root path
 @app.get("/")
 def home():
     return {"message": "Welcome to KelanaAI"}
 
-
 @app.get("/health")
 def home():
     return {"status": "OK"}
 
-
 # POST endpoint — receives JSON, returns JSON
 @app.post("/api/v1/trips")
 def create_trip(request: TripRequest):
-    daily_budget = calculate_daily_budget(request.budget, request.days)
-    category = get_trip_category(request.budget)
+    daily_budget = calculate_daily_budget(
+        request.budget,
+        request.days
+    )
+
+    category = get_trip_category(
+        request.budget
+    )
+
+    recommendation_transport = get_transportation_recommendation(
+        category
+    )
+
     return {
         "destination": request.destination,
         "budget": request.budget,
@@ -41,11 +54,6 @@ def create_trip(request: TripRequest):
         "recommendation_transport": recommendation_transport,
     }
 
-
-# =========================
-# GET /api/v1/trip-categories
-# =========================
-
 @app.get("/api/v1/trip-categories")
 def get_trip_categories():
 
@@ -53,4 +61,20 @@ def get_trip_categories():
         "Backpacker",
         "Standard",
         "Luxury",
+    ]
+
+@app.get("/api/v1/recommendations")
+def get_recommendations():
+    return [
+        "Tokyo Tower",
+        "Mount Fuji",
+        "Shibuya",
+    ]
+
+@app.get("/api/v1/transportations")
+def get_transportations():
+    return [
+        "Bus",
+        "Train",
+        "Flight",
     ]
