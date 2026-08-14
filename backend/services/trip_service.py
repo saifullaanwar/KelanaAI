@@ -31,33 +31,12 @@ def get_travel_season(month):
 
 def get_recommended_places(destination):
     recommendations = {
-        "Japan": [
-            "Tokyo Tower",
-            "Shibuya",
-            "Mount Fuji"
-        ],
-        "Korea": [
-            "N Seoul Tower",
-            "Gyeongbokgung Palace",
-            "Myeongdong"
-        ],
-        "Bali": [
-            "Ubud",
-            "Kuta Beach",
-            "Tanah Lot"
-        ],
-        "Singapore": [
-            "Marina Bay Sands",
-            "Gardens by the Bay",
-            "Sentosa"
-        ],
+        "Japan": ["Tokyo Tower", "Shibuya", "Mount Fuji"],
+        "Korea": ["N Seoul Tower", "Gyeongbokgung Palace", "Myeongdong"],
+        "Bali": ["Ubud", "Kuta Beach", "Tanah Lot"],
+        "Singapore": ["Marina Bay Sands", "Gardens by the Bay", "Sentosa"],
     }
 
     return recommendations.get(
-        destination,
-        [
-            "City Center",
-            "Local Market",
-            "Popular Landmark"
-        ]
+        destination, ["City Center", "Local Market", "Popular Landmark"]
     )

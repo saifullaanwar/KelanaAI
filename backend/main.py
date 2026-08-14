@@ -1,151 +1,56 @@
-from services.trip_service import (
-    calculate_daily_budget,
-    get_trip_category,
-    get_transportation_recommendation,
-    get_travel_season,
-    get_recommended_places
-)
+from fastapi import FastAPI
+from pydantic import BaseModel
+from services.trip_service import calculate_daily_budget, get_trip_category
 
 
-def print_trip_summary(
-    destination,
-    country,
-    days,
-    budget,
-    currency,
-    travel_month,
-    category,
-    transportation,
-    daily_budget,
-    season
-):
-    print("========================")
-    print("KelanaAI")
-    print("========================")
-
-    print(f"Destination   : {destination}")
-    print(f"Country       : {country}")
-    print(f"Days          : {days}")
-    print(f"Budget        : {budget} {currency}")
-    print(f"Currency      : {currency}")
-    print(f"Travel Month  : {travel_month}")
-    print(f"Season        : {season}")
-
-    print("========================")
-    print(f"Category                    : {category}")
-    print(f"Recommended Transportation  : {transportation}")
-    print(f"Daily Budget                : {daily_budget} {currency}/day")
+class TripRequest(BaseModel):
+    destination: str
+    days: int
+    budget: float
+    travel_style: str
 
 
-# ========================================
-# INPUT MULTIPLE DESTINATIONS
-# ========================================
+# FastAPI validates the JSON body against this model
+# If a field is missing or wrong type, it returns 422 automatically
 
-destinations = []
-
-while True:
-    destination = input(
-        "Destination (type 'done' to finish): "
-    )
-
-    if destination.lower() == "done":
-        break
-
-    destinations.append(destination)
+app = FastAPI()
 
 
-# ========================================
-# CHECK DESTINATIONS
-# ========================================
-
-if not destinations:
-    print("No destination entered.")
-    exit()
+# a GET endpoint at the root path
+@app.get("/")
+def home():
+    return {"message": "Welcome to KelanaAI"}
 
 
-# ========================================
-# DISPLAY DESTINATIONS
-# ========================================
-
-print("========================")
-print("Your Destinations")
-print("========================")
-
-for index, destination in enumerate(destinations, start=1):
-    print(f"{index}. {destination}")
+@app.get("/health")
+def home():
+    return {"status": "OK"}
 
 
-# ========================================
-# INPUT TRIP INFORMATION
-# ========================================
-
-country = input("Country: ")
-days = int(input("Days: "))
-budget = float(input("Budget: "))
-currency = input("Currency: ")
-travel_month = input("Travel Month: ")
-
-
-# ========================================
-# CALCULATE TRIP INFORMATION
-# ========================================
-
-category = get_trip_category(budget)
-
-daily_budget = calculate_daily_budget(
-    budget,
-    days
-)
-
-transportation = get_transportation_recommendation(
-    category
-)
-
-season = get_travel_season(
-    travel_month
-)
+# POST endpoint — receives JSON, returns JSON
+@app.post("/api/v1/trips")
+def create_trip(request: TripRequest):
+    daily_budget = calculate_daily_budget(request.budget, request.days)
+    category = get_trip_category(request.budget)
+    return {
+        "destination": request.destination,
+        "budget": request.budget,
+        "daily_budget": daily_budget,
+        "category": category,
+        "travel_style": request.travel_style,
+        "recommendation_transport": recommendation_transport,
+    }
 
 
-# ========================================
-# COMBINE DESTINATIONS
-# ========================================
+# =========================
+# GET /api/v1/trip-categories
+# =========================
 
-destination = ", ".join(destinations)
+@app.get("/api/v1/trip-categories")
+def get_trip_categories():
 
-
-# ========================================
-# PRINT TRIP SUMMARY
-# ========================================
-
-print_trip_summary(
-    destination,
-    country,
-    days,
-    budget,
-    currency,
-    travel_month,
-    category,
-    transportation,
-    daily_budget,
-    season
-)
-
-
-# ========================================
-# DISPLAY RECOMMENDED PLACES
-# ========================================
-
-print("========================")
-print("Recommended Places")
-print("========================")
-
-for destination_name in destinations:
-
-    recommended_places = get_recommended_places(
-        destination_name
-    )
-
-    print(f"\n--- {destination_name} ---")
-
-    for place in recommended_places:
-        print(f"- {place}")
+    return [
+        "Backpacker",
+        "Standard",
+        "Luxury",
+    ]
