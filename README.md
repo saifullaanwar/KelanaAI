@@ -1,31 +1,31 @@
 # KelanaAI
 
-KelanaAI is a console-based travel planning application built with Python during the AI Native Software Engineer Bootcamp.
+KelanaAI is a travel planning application built with Python during the AI Native Software Engineer Bootcamp.
 
-The project is developed progressively, starting from a simple Trip Summary Generator and evolving into a basic travel recommendation engine.
+The project is developed progressively from a simple console application into a REST API using FastAPI.
 
 ---
 
 ## Project Structure
 
-```text
-kelana-ai/
-├── README.md
-├── .gitignore
-├── backend/
-│   ├── main.py
-│   └── services/
-│       └── trip_service.py
-└── frontend/
-    └── .gitkeep
-```
+    kelana-ai/
+    ├── README.md
+    ├── .gitignore
+    ├── backend/
+    │   ├── main.py
+    │   ├── requirements.txt
+    │   └── services/
+    │       └── trip_service.py
+    └── frontend/
+        └── .gitkeep
 
 ### Description
 
-- `backend/main.py` — handles user input and displays the application output.
+- `backend/main.py` — FastAPI application and REST API endpoints.
 - `backend/services/trip_service.py` — contains the application's business logic.
+- `backend/requirements.txt` — Python dependencies.
 - `frontend/` — reserved for future frontend development.
-- `.gitignore` — prevents Python cache files from being tracked by Git.
+- `.gitignore` — prevents unnecessary files such as Python cache and virtual environments from being tracked by Git.
 
 ---
 
@@ -97,47 +97,119 @@ Session 2 makes KelanaAI smarter by introducing business logic, recommendations,
 
 ---
 
-## Example Output
+## Session 3 — REST API with FastAPI
 
-```text
-========================
-KelanaAI
-========================
-Destination   : Japan, Korea
-Country       : Indonesia
-Days          : 5
-Budget        : 1500.0 IDR
-Currency      : IDR
-Travel Month  : February
-Season        : Regular Season
-========================
-Category                    : Standard
-Recommended Transportation  : Train
-Daily Budget                : 300.0 IDR/day
-========================
-Recommended Places
-========================
+Session 3 transforms KelanaAI from a console application into a REST API using FastAPI and Uvicorn.
 
---- Japan ---
-- Tokyo Tower
-- Shibuya
-- Mount Fuji
+The API reuses the business logic from `trip_service.py`.
 
---- Korea ---
-- N Seoul Tower
-- Gyeongbokgung Palace
-- Myeongdong
-```
+### Technologies
+
+- Python
+- FastAPI
+- Uvicorn
+- Pydantic
+- Git & GitHub
+
+### API Endpoints
+
+#### GET `/`
+
+Returns a welcome message.
+
+    {
+      "message": "Welcome to KelanaAI"
+    }
+
+#### GET `/health`
+
+Returns the API health status.
+
+    {
+      "status": "OK"
+    }
+
+#### POST `/api/v1/trips`
+
+Creates a trip recommendation based on the submitted travel information.
+
+Example request:
+
+    {
+      "destination": "Japan",
+      "days": 5,
+      "budget": 2000,
+      "travel_style": "Family"
+    }
+
+Example response:
+
+    {
+      "destination": "Japan",
+      "budget": 2000.0,
+      "daily_budget": 400.0,
+      "category": "Standard",
+      "travel_style": "Family",
+      "recommendation_transport": "Train"
+    }
+
+#### GET `/api/v1/trip-categories`
+
+Returns all available trip categories.
+
+    [
+      "Backpacker",
+      "Standard",
+      "Luxury"
+    ]
+
+#### GET `/api/v1/recommendations`
+
+Returns recommended destinations.
+
+    [
+      "Tokyo Tower",
+      "Mount Fuji",
+      "Shibuya"
+    ]
+
+#### GET `/api/v1/transportations`
+
+Returns available transportation recommendations.
+
+    [
+      "Bus",
+      "Train",
+      "Flight"
+    ]
 
 ---
 
 ## How to Run
 
-Open the terminal in the `backend` directory:
+Navigate to the backend directory:
 
-```bash
-python main.py
-```
+    cd backend
+
+Activate the virtual environment if needed:
+
+    .venv\Scripts\activate
+
+Install dependencies:
+
+    pip install -r requirements.txt
+
+Start the FastAPI server:
+
+    uvicorn main:app --reload
+
+The API will be available at:
+
+    http://localhost:8000
+
+Interactive API documentation:
+
+    http://localhost:8000/docs
 
 ---
 
@@ -145,21 +217,26 @@ python main.py
 
 ### Session 1
 
-```bash
-git commit -m "Create initial KelanaAI console app"
-git tag v0.1.0
-git push origin v0.1.0
-```
+    git add .
+    git commit -m "Create initial KelanaAI console app"
+    git tag v0.1.0
+    git push origin v0.1.0
 
 ### Session 2
 
-```bash
-git add .
-git commit -m "Add recommendation engine"
-git push
-git tag session-2
-git push origin session-2
-```
+    git add .
+    git commit -m "Add recommendation engine"
+    git push
+    git tag session-2
+    git push origin session-2
+
+### Session 3
+
+    git add .
+    git commit -m "Convert KelanaAI into FastAPI"
+    git push
+    git tag session-3
+    git push origin session-3
 
 ---
 
@@ -167,7 +244,22 @@ git push origin session-2
 
 - Session 1 — Completed
 - Session 2 — Completed
+- Session 3 — Completed
 
-KelanaAI currently provides basic travel information, budget analysis, travel season detection, transportation recommendations, and destination recommendations.
+KelanaAI currently provides:
 
-Future sessions will extend the application toward a more complete AI-powered travel planning system.
+- Travel information management
+- Budget calculation
+- Trip category classification
+- Travel season detection
+- Transportation recommendations
+- Destination recommendations
+- REST API endpoints
+- API health check
+- Interactive Swagger documentation
+
+---
+
+## Future Development
+
+Future sessions will extend KelanaAI with persistent data storage using PostgreSQL and additional features toward a more complete AI-powered travel planning system.
