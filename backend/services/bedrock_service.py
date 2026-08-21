@@ -51,20 +51,39 @@ def get_ai_recommendation(
         The AI-generated itinerary as a plain string.
     """
     prompt = (
-        f"You are an experienced travel planner.\n\n"
-        f"Create a personalized travel itinerary using the following trip details:\n"
-        f"- Destination: {destination}\n"
-        f"- Number of Days: {days}\n"
-        f"- Budget: USD {budget}\n"
-        f"- Travel Style: {travel_style}\n\n"
-        f"Please provide:\n"
-        f"1. A daily itinerary for the entire trip.\n"
-        f"2. An estimated daily budget.\n"
-        f"3. Local food recommendations.\n"
-        f"4. Transportation suggestions.\n"
-        f"5. Recommended attractions and activities.\n\n"
-        f"Make the recommendations practical, realistic, and suitable "
-        f"for the specified budget and travel style.\n"
+    f"You are an experienced travel planner.\n\n"
+    f"Create a personalized travel itinerary using the following trip details:\n"
+    f"- Destination: {destination}\n"
+    f"- Number of Days: {days}\n"
+    f"- Budget: USD {budget}\n"
+    f"- Travel Style: {travel_style}\n\n"
+
+    f"For each day, create a structured daily plan with the following sections:\n\n"
+
+    f"Morning:\n"
+    f"- Provide 2-3 specific morning activities.\n"
+    f"- Include practical activities such as sightseeing, breakfast, "
+    f"walking tours, or local experiences.\n\n"
+
+    f"Afternoon:\n"
+    f"- Recommend cultural sites and local experiences.\n"
+    f"- Include specific attractions, historical places, museums, "
+    f"markets, or cultural activities when appropriate.\n\n"
+
+    f"Evening:\n"
+    f"- Recommend suitable dinner spots or local food experiences.\n"
+    f"- Suggest appropriate nightlife or evening entertainment.\n\n"
+
+    f"Also provide:\n"
+    f"- An estimated daily budget.\n"
+    f"- Transportation suggestions.\n"
+    f"- Recommended attractions and activities.\n\n"
+
+    f"Make the recommendations practical, realistic, and suitable "
+    f"for the specified budget and travel style.\n\n"
+
+    f"Format your response as Markdown with clear headings (##) "
+    f"and bullet lists (-)."
     )
 
     # Payload format for Amazon Nova / Converse API
