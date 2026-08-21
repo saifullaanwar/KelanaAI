@@ -6,6 +6,7 @@ from services.trip_service import (
     get_trip_category,
     get_transportation_recommendation,
 )
+from services.bedrock_service import get_ai_recommendation
 
 from database import SessionLocal, init_db
 from models.trip import Trip
@@ -57,6 +58,14 @@ def create_trip(request: TripRequest):
     db = SessionLocal()
 
     try:
+        # Call Bedrock for AI-generated itinerary
+        ai_recommendation = get_ai_recommendation(
+            destination=request.destination,
+            days=request.days,
+            budget=request.budget,
+            travel_style=request.travel_style,
+        )
+
         # Create Trip object
         trip = Trip(
             destination=request.destination,
@@ -64,6 +73,7 @@ def create_trip(request: TripRequest):
             budget=request.budget,
             category=category,
             daily_budget=daily_budget,
+            ai_recommendation=ai_recommendation,
         )
 
         # Save to PostgreSQL
@@ -81,6 +91,7 @@ def create_trip(request: TripRequest):
             "category": trip.category,
             "travel_style": request.travel_style,
             "recommendation_transport": recommendation_transport,
+            "ai_recommendation": trip.ai_recommendation,
         }
 
     finally:
@@ -217,6 +228,44 @@ def update_trip(trip_id: int, request: TripRequest):
             "category": trip.category,
             "travel_style": request.travel_style,
             "recommendation_transport": recommendation_transport,
+        }
+
+    finally:
+        db.close()
+
+@app.post("/api/v1/trips/{trip_id}/generate")
+def generate_trip_recommendation(trip_id: int):
+
+    db = SessionLocal()
+
+    try:
+        # Retrieve existing trip
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+        if trip is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trip with id {trip_id} not found"
+            )
+
+        # Generate AI recommendation using existing trip data
+        ai_recommendation = get_ai_recommendation(
+            destination=trip.destination,
+            days=trip.days,
+            budget=trip.budget,
+            travel_style=trip.category,
+        )
+
+        # Save AI recommendation
+        trip.ai_recommendation = ai_recommendation
+
+        db.commit()
+        db.refresh(trip)
+
+        return {
+            "trip_id": trip.id,
+            "destination": trip.destination,
+            "recommendation": trip.ai_recommendation,
         }
 
     finally:
