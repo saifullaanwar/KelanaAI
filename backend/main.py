@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from services.trip_service import (
@@ -6,6 +7,7 @@ from services.trip_service import (
     get_trip_category,
     get_transportation_recommendation,
 )
+
 from services.bedrock_service import get_ai_recommendation
 
 from database import SessionLocal, init_db
@@ -22,6 +24,16 @@ class TripRequest(BaseModel):
 app = FastAPI()
 
 
+# Allow requests from Next.js frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 # Initialize database and create tables
 init_db()
 
@@ -36,7 +48,10 @@ def health():
     return {"status": "OK"}
 
 
-# POST endpoint — receives JSON and saves trip to PostgreSQL
+# ============================================================
+# CREATE TRIP
+# ============================================================
+
 @app.post("/api/v1/trips")
 def create_trip(request: TripRequest):
 
@@ -86,6 +101,7 @@ def create_trip(request: TripRequest):
         return {
             "id": trip.id,
             "destination": trip.destination,
+            "days": trip.days,
             "budget": trip.budget,
             "daily_budget": trip.daily_budget,
             "category": trip.category,
@@ -98,6 +114,10 @@ def create_trip(request: TripRequest):
         db.close()
 
 
+# ============================================================
+# TRIP CATEGORIES
+# ============================================================
+
 @app.get("/api/v1/trip-categories")
 def get_trip_categories():
     return [
@@ -106,6 +126,10 @@ def get_trip_categories():
         "Luxury",
     ]
 
+
+# ============================================================
+# DESTINATION RECOMMENDATIONS
+# ============================================================
 
 @app.get("/api/v1/recommendations")
 def get_recommendations():
@@ -116,6 +140,10 @@ def get_recommendations():
     ]
 
 
+# ============================================================
+# TRANSPORTATION RECOMMENDATIONS
+# ============================================================
+
 @app.get("/api/v1/transportations")
 def get_transportations():
     return [
@@ -124,22 +152,40 @@ def get_transportations():
         "Flight",
     ]
 
+
+# ============================================================
+# GET ALL TRIPS
+# ============================================================
+
 @app.get("/api/v1/trips")
 def list_trips():
+
     db = SessionLocal()
 
     try:
         trips = db.query(Trip).all()
+
         return trips
+
     finally:
         db.close()
 
+
+# ============================================================
+# GET ONE TRIP
+# ============================================================
+
 @app.get("/api/v1/trips/{trip_id}")
 def get_trip(trip_id: int):
+
     db = SessionLocal()
 
     try:
-        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+        trip = (
+            db.query(Trip)
+            .filter(Trip.id == trip_id)
+            .first()
+        )
 
         if trip is None:
             raise HTTPException(
@@ -154,17 +200,28 @@ def get_trip(trip_id: int):
             "budget": trip.budget,
             "category": trip.category,
             "daily_budget": trip.daily_budget,
+            "ai_recommendation": trip.ai_recommendation,
         }
 
     finally:
         db.close()
 
+
+# ============================================================
+# DELETE TRIP
+# ============================================================
+
 @app.delete("/api/v1/trips/{trip_id}")
 def delete_trip(trip_id: int):
+
     db = SessionLocal()
 
     try:
-        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+        trip = (
+            db.query(Trip)
+            .filter(Trip.id == trip_id)
+            .first()
+        )
 
         if trip is None:
             raise HTTPException(
@@ -182,12 +239,25 @@ def delete_trip(trip_id: int):
     finally:
         db.close()
 
+
+# ============================================================
+# UPDATE TRIP
+# ============================================================
+
 @app.put("/api/v1/trips/{trip_id}")
-def update_trip(trip_id: int, request: TripRequest):
+def update_trip(
+    trip_id: int,
+    request: TripRequest
+):
+
     db = SessionLocal()
 
     try:
-        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+        trip = (
+            db.query(Trip)
+            .filter(Trip.id == trip_id)
+            .first()
+        )
 
         if not trip:
             raise HTTPException(
@@ -205,8 +275,10 @@ def update_trip(trip_id: int, request: TripRequest):
             request.budget
         )
 
-        recommendation_transport = get_transportation_recommendation(
-            category
+        recommendation_transport = (
+            get_transportation_recommendation(
+                category
+            )
         )
 
         # Update database fields
@@ -228,10 +300,16 @@ def update_trip(trip_id: int, request: TripRequest):
             "category": trip.category,
             "travel_style": request.travel_style,
             "recommendation_transport": recommendation_transport,
+            "ai_recommendation": trip.ai_recommendation,
         }
 
     finally:
         db.close()
+
+
+# ============================================================
+# GENERATE AI RECOMMENDATION
+# ============================================================
 
 @app.post("/api/v1/trips/{trip_id}/generate")
 def generate_trip_recommendation(trip_id: int):
@@ -240,7 +318,11 @@ def generate_trip_recommendation(trip_id: int):
 
     try:
         # Retrieve existing trip
-        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+        trip = (
+            db.query(Trip)
+            .filter(Trip.id == trip_id)
+            .first()
+        )
 
         if trip is None:
             raise HTTPException(
