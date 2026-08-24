@@ -65,7 +65,7 @@ function Earth() {
 
 export default function TravelGlobe() {
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
+    <div className="fixed inset-0 z-0 pointer-events-none" style={{ height: "100dvh" }}>
       <Canvas
         camera={{
           position: [0, 0, 7],
