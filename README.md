@@ -18,7 +18,7 @@ KelanaAI allows users to enter their destination, budget, number of days, and tr
 
 ---
 
-## Project Evolution
+# Project Evolution
 
 KelanaAI has been developed progressively through multiple sessions:
 
@@ -30,8 +30,9 @@ KelanaAI has been developed progressively through multiple sessions:
 | Session 4 | PostgreSQL Persistence & CRUD | Completed |
 | Session 5 | Amazon Bedrock AI Integration | Completed |
 | Session 6 | Next.js Frontend | Completed |
+| Session 7 | Trip History Dashboard & Enhanced Trip Cards | Completed |
 
-The application has evolved from a simple command-line travel calculator into a full-stack AI travel planning application.
+The application has evolved from a simple command-line travel calculator into a full-stack AI travel planning application with persistent trip history and a multi-page web interface.
 
 ---
 
@@ -39,7 +40,7 @@ The application has evolved from a simple command-line travel calculator into a 
 
 ```text
 kelana-ai/
-
+│
 ├── README.md
 ├── .gitignore
 │
@@ -70,8 +71,24 @@ kelana-ai/
     │   ├── layout.tsx
     │   ├── page.tsx
     │   │
-    │   └── components/
-    │       └── TravelGlobe.tsx
+    │   └── trips/
+    │       ├── page.tsx
+    │       │
+    │       └── [id]/
+    │           ├── page.tsx
+    │           └── _components/
+    │               ├── ItineraryView.tsx
+    │               └── itineraryParser.ts
+    │
+    ├── components/
+    │   ├── TripCard.tsx
+    │   └── TripHistoryClient.tsx
+    │
+    ├── services/
+    │   └── tripService.ts
+    │
+    ├── types/
+    │   └── trip.ts
     │
     └── public/
 ```
@@ -298,8 +315,6 @@ The backend automatically calculates:
 - Transportation recommendation
 - AI itinerary
 
----
-
 ### GET `/api/v1/trip-categories`
 
 Returns available trip categories.
@@ -407,15 +422,11 @@ The application automatically calculates:
 - Transportation recommendation
 - AI recommendation
 
----
-
 ## Read All
 
 ### GET `/api/v1/trips`
 
 Returns all trips stored in PostgreSQL.
-
----
 
 ## Read One
 
@@ -429,8 +440,6 @@ If the trip does not exist, the API returns:
 404 Not Found
 ```
 
----
-
 ## Update
 
 ### PUT `/api/v1/trips/{id}`
@@ -442,8 +451,6 @@ Before saving the changes, the application recalculates:
 - Trip category
 - Daily budget
 - Transportation recommendation
-
----
 
 ## Delete
 
@@ -658,6 +665,12 @@ Global styling is defined in:
 
 ```text
 frontend/app/globals.css
+```
+
+The application layout is defined in:
+
+```text
+frontend/app/layout.tsx
 ```
 
 The Three.js travel globe component is located at:
@@ -1092,6 +1105,372 @@ This resets the current result and returns the user to the travel planning form.
 
 ---
 
+# Session 7 — Trip History Dashboard
+
+Session 7 transforms KelanaAI from a single-page travel planner into a multi-page application with persistent trip history.
+
+The frontend now connects the existing PostgreSQL and FastAPI backend to a dedicated Trip History Dashboard.
+
+## Goals
+
+The goal of Session 7 is to:
+
+- Retrieve saved trips from PostgreSQL through FastAPI
+- Display previously generated trips
+- Create a dedicated Trip History Dashboard
+- Create individual Trip Detail pages
+- Improve Trip Card presentation
+- Add search and sorting
+- Add pagination
+- Display richer trip metadata
+- Parse and structure AI-generated itineraries
+- Improve the readability of long AI recommendations
+
+---
+
+# Trip History Dashboard
+
+The Trip History Dashboard is available at:
+
+```text
+/trips
+```
+
+The page retrieves saved trips from:
+
+```text
+GET /api/v1/trips
+```
+
+The dashboard displays saved itineraries as individual Trip Cards.
+
+Each card provides a concise overview of the trip and a link to its detail page.
+
+---
+
+# Trip Detail Page
+
+Each saved trip can be opened through:
+
+```text
+/trips/{id}
+```
+
+The page retrieves the selected trip through:
+
+```text
+GET /api/v1/trips/{id}
+```
+
+The Trip Detail page displays:
+
+- Destination
+- Total budget
+- Daily budget
+- Duration
+- Trip category
+- Transportation recommendation
+- AI-generated itinerary
+
+---
+
+# Trip Card
+
+Trip Cards are implemented in:
+
+```text
+frontend/components/TripCard.tsx
+```
+
+Each Trip Card provides:
+
+- Destination
+- Destination icon or country flag
+- Trip duration
+- Budget
+- Currency formatting
+- Category badge
+- Travel style badge
+- View Details action
+
+---
+
+# Destination Icons
+
+Trip Cards provide a visual destination indicator.
+
+Destination names are mapped to appropriate country flags or visual fallbacks where applicable.
+
+This makes the dashboard easier to scan visually and helps distinguish destinations quickly.
+
+---
+
+# Currency & Budget Formatting
+
+Trip budgets are formatted using locale-aware number formatting.
+
+Example:
+
+```text
+USD 2000
+```
+
+becomes:
+
+```text
+USD 2,000
+```
+
+The formatting is handled through JavaScript's:
+
+```typescript
+toLocaleString()
+```
+
+method.
+
+---
+
+# Category Badge
+
+Each Trip Card displays the trip category as a badge.
+
+Supported budget categories include:
+
+- Backpacker
+- Standard
+- Luxury
+
+The badge provides a compact visual representation of the trip's budget category.
+
+---
+
+# Travel Style Badge
+
+Each Trip Card also displays the travel style associated with the trip.
+
+Examples include:
+
+- Family
+- Solo
+- Couple
+
+The travel style provides additional context without requiring the user to open the full trip detail page.
+
+---
+
+# Search & Sorting
+
+The Trip History Dashboard supports searching and sorting.
+
+Search can match against:
+
+- Destination
+- Category
+- Travel style
+
+Example searches:
+
+```text
+Japan
+Luxury
+Family
+```
+
+The dashboard also supports sorting by:
+
+- Latest
+- Oldest
+- Highest Budget
+- Lowest Budget
+
+The search and sorting controls are implemented in:
+
+```text
+frontend/components/TripHistoryClient.tsx
+```
+
+---
+
+# Pagination
+
+The Trip History Dashboard includes pagination when the number of saved trips exceeds the page limit.
+
+The dashboard displays:
+
+```text
+10 trips per page
+```
+
+Users can navigate using:
+
+- Previous
+- Page numbers
+- Next
+
+The pagination automatically resets to page 1 when search or sorting criteria change.
+
+---
+
+# Structured AI Itinerary
+
+Long AI-generated Markdown responses are no longer displayed as one large block of raw content.
+
+The Trip Detail page parses the AI itinerary into structured sections.
+
+The parser is implemented in:
+
+```text
+frontend/app/trips/[id]/_components/itineraryParser.ts
+```
+
+The parsed structure separates the itinerary into:
+
+```text
+Trip
+ ├── Day 1
+ │    ├── Morning
+ │    ├── Afternoon
+ │    └── Evening
+ │
+ ├── Day 2
+ │    ├── Morning
+ │    ├── Afternoon
+ │    └── Evening
+ │
+ └── ...
+```
+
+This makes long AI-generated itineraries easier to read and understand.
+
+---
+
+# Day-by-Day Itinerary
+
+The structured itinerary is displayed through:
+
+```text
+frontend/app/trips/[id]/_components/ItineraryView.tsx
+```
+
+Each day is presented as an individual card.
+
+The day card contains:
+
+- Day number
+- Day title
+- Morning activities
+- Afternoon activities
+- Evening activities
+
+The layout keeps activities grouped by time of day so users can scan the itinerary more easily.
+
+---
+
+# Itinerary Activity Cards
+
+Activities inside each time slot display structured information such as:
+
+- Activity title
+- Description
+- Location
+- Estimated cost
+- Additional information when available
+
+This allows the AI-generated itinerary to be presented as a more readable travel plan instead of a large Markdown document.
+
+---
+
+# General Tips
+
+Information that applies to the entire trip is separated from individual days.
+
+Examples include:
+
+- Transportation suggestions
+- Accommodation recommendations
+- Local etiquette
+- Currency information
+- Other general travel tips
+
+These recommendations are displayed separately so users do not mistake trip-wide information for recommendations belonging to the final day.
+
+---
+
+# Trip Summary
+
+The Trip Detail page can also display a final Trip Summary containing:
+
+- Budget-related information
+- Overall trip information
+- AI-generated closing notes
+
+The summary is kept separate from individual itinerary days because it describes the trip as a whole.
+
+---
+
+# Session 7 Frontend Structure
+
+The main Session 7 frontend components are:
+
+```text
+frontend/
+│
+├── app/
+│   └── trips/
+│       ├── page.tsx
+│       │
+│       └── [id]/
+│           ├── page.tsx
+│           └── _components/
+│               ├── ItineraryView.tsx
+│               └── itineraryParser.ts
+│
+├── components/
+│   ├── TripCard.tsx
+│   └── TripHistoryClient.tsx
+│
+├── services/
+│   └── tripService.ts
+│
+└── types/
+    └── trip.ts
+```
+
+---
+
+# Session 7 Data Flow
+
+The Trip History Dashboard uses the existing backend persistence layer.
+
+The flow is:
+
+```text
+PostgreSQL
+    ↓
+FastAPI
+    ↓
+GET /api/v1/trips
+    ↓
+Next.js Trip History Dashboard
+    ↓
+Trip Cards
+    ↓
+User selects View Details
+    ↓
+GET /api/v1/trips/{id}
+    ↓
+Trip Detail Page
+    ↓
+Itinerary Parser
+    ↓
+Structured AI Itinerary
+```
+
+This connects KelanaAI's persistent backend data with its frontend interface.
+
+---
+
 # How to Run
 
 KelanaAI requires two development servers:
@@ -1224,6 +1603,12 @@ Then open:
 http://localhost:3000
 ```
 
+Trip History Dashboard:
+
+```text
+http://localhost:3000/trips
+```
+
 ---
 
 # Git Version Control
@@ -1281,14 +1666,28 @@ git push origin session-5
 
 ## Session 6
 
-Recommended Git checkpoint:
-
 ```bash
 git add .
 git commit -m "Create Next.js frontend"
 git push
 git tag session-6
 git push origin session-6
+```
+
+## Session 7
+
+```bash
+git add .
+git commit -m "Create trip dashboard and enhance trip card components"
+git push
+git tag session-7
+git push origin session-7
+```
+
+The final Session 7 commit is:
+
+```text
+4baf5e9
 ```
 
 ---
@@ -1304,6 +1703,7 @@ session-3
 session-4
 session-5
 session-6
+session-7
 ```
 
 ---
@@ -1321,6 +1721,7 @@ session-6
 ## Frontend
 
 - Session 6 — Completed
+- Session 7 — Completed
 
 KelanaAI currently provides:
 
@@ -1356,24 +1757,27 @@ KelanaAI currently provides:
 - Three.js travel visualization
 - Frontend-to-backend API integration
 - Frontend environment configuration
+- Trip History Dashboard
+- Trip Detail pages
+- Saved trip browsing
+- Search trips
+- Trip sorting
+- Pagination
+- Destination icons and flags
+- Currency and budget formatting
+- Category badges
+- Travel style badges
+- Structured itinerary parsing
+- Day-by-day itinerary display
+- Morning, Afternoon, and Evening itinerary sections
+- General travel tips
+- Trip summary information
 
 ---
 
-# Session 6 Achievement
+# Session 7 Achievement
 
-Before Session 6:
-
-```text
-User
-  ↓
-Swagger UI
-  ↓
-FastAPI
-  ↓
-Amazon Bedrock
-```
-
-After Session 6:
+Before Session 7:
 
 ```text
 User
@@ -1393,9 +1797,43 @@ Next.js
 User
 ```
 
-KelanaAI is no longer only an API.
+After Session 7:
 
-It now has a real user interface through which users can interact with the AI travel planner.
+```text
+                         ┌──────────────────────┐
+                         │     PostgreSQL       │
+                         │    Saved Trips       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       FastAPI        │
+                         │       REST API       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       Next.js        │
+                         │                      │
+                         │  Trip History        │
+                         │  Dashboard           │
+                         └──────────┬───────────┘
+                                    │
+                     ┌──────────────┴──────────────┐
+                     │                             │
+                     ▼                             ▼
+             ┌───────────────┐            ┌────────────────┐
+             │   Trip Cards  │            │  Trip Detail   │
+             │               │            │                │
+             │ Search        │            │ Day Itinerary  │
+             │ Sorting       │            │ General Tips   │
+             │ Pagination    │            │ Trip Summary   │
+             └───────────────┘            └────────────────┘
+```
+
+KelanaAI is no longer only an AI travel planner.
+
+It now provides a persistent, multi-page travel planning experience where users can generate trips, save them in PostgreSQL, browse their trip history, search and sort saved itineraries, and open detailed structured travel plans.
 
 ---
 
@@ -1407,10 +1845,7 @@ Potential improvements include:
 
 - User authentication
 - User registration and login
-- User trip history
-- Saved trips dashboard
-- Browse previously generated itineraries
-- Edit saved trips
+- Edit saved trips from the frontend
 - Delete saved trips from the frontend
 - AI itinerary refinement
 - Regenerate specific days
@@ -1463,6 +1898,16 @@ AI Markdown Rendering
 Loading & Error Handling
         ↓
 Interactive UI
+        ↓
+Trip History Dashboard
+        ↓
+Search & Sorting
+        ↓
+Pagination
+        ↓
+Structured AI Itinerary
+        ↓
+Multi-page Travel Application
 ```
 
-The project demonstrates how a simple Python application can progressively evolve into a full-stack AI-powered product.
+The project demonstrates how a simple Python application can progressively evolve into a full-stack AI-powered product with persistent data, AI-generated travel recommendations, and a modern multi-page frontend.
