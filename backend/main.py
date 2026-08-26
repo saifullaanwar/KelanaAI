@@ -9,10 +9,13 @@ from services.trip_service import (
 )
 
 from services.bedrock_service import get_ai_recommendation
-
 from database import SessionLocal, init_db
 from models.trip import Trip
 
+
+# ============================================================
+# REQUEST MODEL
+# ============================================================
 
 class TripRequest(BaseModel):
     destination: str
@@ -21,10 +24,17 @@ class TripRequest(BaseModel):
     travel_style: str
 
 
+# ============================================================
+# APP
+# ============================================================
+
 app = FastAPI()
 
 
-# Allow requests from Next.js frontend
+# ============================================================
+# CORS
+# ============================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -34,18 +44,33 @@ app.add_middleware(
 )
 
 
-# Initialize database and create tables
+# ============================================================
+# DATABASE
+# ============================================================
+
 init_db()
 
 
+# ============================================================
+# ROOT
+# ============================================================
+
 @app.get("/")
 def home():
-    return {"message": "Welcome to KelanaAI"}
+    return {
+        "message": "Welcome to KelanaAI"
+    }
 
+
+# ============================================================
+# HEALTH
+# ============================================================
 
 @app.get("/health")
 def health():
-    return {"status": "OK"}
+    return {
+        "status": "OK"
+    }
 
 
 # ============================================================
@@ -55,7 +80,10 @@ def health():
 @app.post("/api/v1/trips")
 def create_trip(request: TripRequest):
 
+    # --------------------------------------------------------
     # Calculate business logic
+    # --------------------------------------------------------
+
     daily_budget = calculate_daily_budget(
         request.budget,
         request.days
@@ -69,11 +97,18 @@ def create_trip(request: TripRequest):
         category
     )
 
+    # --------------------------------------------------------
     # Create database session
+    # --------------------------------------------------------
+
     db = SessionLocal()
 
     try:
-        # Call Bedrock for AI-generated itinerary
+
+        # ----------------------------------------------------
+        # Generate AI itinerary
+        # ----------------------------------------------------
+
         ai_recommendation = get_ai_recommendation(
             destination=request.destination,
             days=request.days,
@@ -81,22 +116,31 @@ def create_trip(request: TripRequest):
             travel_style=request.travel_style,
         )
 
-        # Create Trip object
+        # ----------------------------------------------------
+        # Create Trip
+        # ----------------------------------------------------
+
         trip = Trip(
             destination=request.destination,
             days=request.days,
             budget=request.budget,
             category=category,
+            travel_style=request.travel_style,
             daily_budget=daily_budget,
             ai_recommendation=ai_recommendation,
         )
 
-        # Save to PostgreSQL
+        # ----------------------------------------------------
+        # Save to database
+        # ----------------------------------------------------
+
         db.add(trip)
         db.commit()
-
-        # Reload generated ID
         db.refresh(trip)
+
+        # ----------------------------------------------------
+        # Response
+        # ----------------------------------------------------
 
         return {
             "id": trip.id,
@@ -105,7 +149,7 @@ def create_trip(request: TripRequest):
             "budget": trip.budget,
             "daily_budget": trip.daily_budget,
             "category": trip.category,
-            "travel_style": request.travel_style,
+            "travel_style": trip.travel_style,
             "recommendation_transport": recommendation_transport,
             "ai_recommendation": trip.ai_recommendation,
         }
@@ -163,6 +207,7 @@ def list_trips():
     db = SessionLocal()
 
     try:
+
         trips = db.query(Trip).all()
 
         return trips
@@ -181,6 +226,7 @@ def get_trip(trip_id: int):
     db = SessionLocal()
 
     try:
+
         trip = (
             db.query(Trip)
             .filter(Trip.id == trip_id)
@@ -199,6 +245,7 @@ def get_trip(trip_id: int):
             "days": trip.days,
             "budget": trip.budget,
             "category": trip.category,
+            "travel_style": trip.travel_style,
             "daily_budget": trip.daily_budget,
             "ai_recommendation": trip.ai_recommendation,
         }
@@ -217,6 +264,7 @@ def delete_trip(trip_id: int):
     db = SessionLocal()
 
     try:
+
         trip = (
             db.query(Trip)
             .filter(Trip.id == trip_id)
@@ -253,6 +301,11 @@ def update_trip(
     db = SessionLocal()
 
     try:
+
+        # ----------------------------------------------------
+        # Find existing trip
+        # ----------------------------------------------------
+
         trip = (
             db.query(Trip)
             .filter(Trip.id == trip_id)
@@ -265,7 +318,10 @@ def update_trip(
                 detail=f"Trip with id {trip_id} not found"
             )
 
+        # ----------------------------------------------------
         # Recalculate business logic
+        # ----------------------------------------------------
+
         daily_budget = calculate_daily_budget(
             request.budget,
             request.days
@@ -281,15 +337,27 @@ def update_trip(
             )
         )
 
+        # ----------------------------------------------------
         # Update database fields
+        # ----------------------------------------------------
+
         trip.destination = request.destination
         trip.days = request.days
         trip.budget = request.budget
         trip.category = category
+        trip.travel_style = request.travel_style
         trip.daily_budget = daily_budget
+
+        # ----------------------------------------------------
+        # Save changes
+        # ----------------------------------------------------
 
         db.commit()
         db.refresh(trip)
+
+        # ----------------------------------------------------
+        # Response
+        # ----------------------------------------------------
 
         return {
             "id": trip.id,
@@ -298,7 +366,7 @@ def update_trip(
             "budget": trip.budget,
             "daily_budget": trip.daily_budget,
             "category": trip.category,
-            "travel_style": request.travel_style,
+            "travel_style": trip.travel_style,
             "recommendation_transport": recommendation_transport,
             "ai_recommendation": trip.ai_recommendation,
         }
@@ -317,7 +385,11 @@ def generate_trip_recommendation(trip_id: int):
     db = SessionLocal()
 
     try:
+
+        # ----------------------------------------------------
         # Retrieve existing trip
+        # ----------------------------------------------------
+
         trip = (
             db.query(Trip)
             .filter(Trip.id == trip_id)
@@ -330,23 +402,37 @@ def generate_trip_recommendation(trip_id: int):
                 detail=f"Trip with id {trip_id} not found"
             )
 
-        # Generate AI recommendation using existing trip data
+        # ----------------------------------------------------
+        # Generate AI recommendation
+        # ----------------------------------------------------
+        # IMPORTANT:
+        # Use travel_style, NOT category.
+        # ----------------------------------------------------
+
         ai_recommendation = get_ai_recommendation(
             destination=trip.destination,
             days=trip.days,
             budget=trip.budget,
-            travel_style=trip.category,
+            travel_style=trip.travel_style,
         )
 
+        # ----------------------------------------------------
         # Save AI recommendation
+        # ----------------------------------------------------
+
         trip.ai_recommendation = ai_recommendation
 
         db.commit()
         db.refresh(trip)
 
+        # ----------------------------------------------------
+        # Response
+        # ----------------------------------------------------
+
         return {
             "trip_id": trip.id,
             "destination": trip.destination,
+            "travel_style": trip.travel_style,
             "recommendation": trip.ai_recommendation,
         }
 

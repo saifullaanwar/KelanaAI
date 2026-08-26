@@ -67,7 +67,7 @@ export default function Home() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/trips`, {
+      const res = await fetch(`${API_URL}/trips`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,36 +106,6 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 z-0">
         <div className="hero-grid absolute inset-0 opacity-30" />
       </div>
-
-      {/* ══════════════════════════════════
-          NAVBAR
-      ══════════════════════════════════ */}
-      <header className="relative z-20 shrink-0 border-b border-white/[0.06] bg-[#050816] backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-cyan-500/25">
-              <Compass size={19} className="text-white" strokeWidth={2.5} />
-            </div>
-            <span className="text-base font-semibold tracking-tight sm:text-lg">
-              Kelana<span className="text-cyan-400">AI</span>
-            </span>
-          </div>
-
-          <nav className="hidden items-center gap-6 text-sm text-slate-400 md:flex">
-            <a href="#" className="transition hover:text-white">Features</a>
-            <a href="#" className="transition hover:text-white">How it works</a>
-            <a href="#" className="transition hover:text-white">Pricing</a>
-          </nav>
-
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-400 backdrop-blur-xl sm:px-4 sm:py-2 sm:text-sm">
-            <Sparkles size={13} className="text-cyan-400" />
-            <span className="hidden sm:inline">AI-powered travel planning</span>
-            <span className="sm:hidden">AI planner</span>
-          </div>
-
-        </div>
-      </header>
 
       {/* ══════════════════════════════════
           MAIN
