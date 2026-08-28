@@ -1,15 +1,50 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowLeft,
   Compass,
   Plus,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { getTrips } from "../../services/tripService";
 import TripHistoryClient from "../../components/TripHistoryClient";
 
-export default async function TripsPage() {
-  const trips = await getTrips();
+export default function TripsPage() {
+  const router = useRouter();
+
+  const [trips, setTrips] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadTrips() {
+      // Check authentication before calling the API
+      const token = localStorage.getItem("access_token");
+
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      try {
+        const data = await getTrips();
+        setTrips(data);
+      } catch (err) {
+        // If authentication fails, remove the token
+        // and redirect to login.
+        localStorage.removeItem("access_token");
+        router.replace("/login");
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTrips();
+  }, [router]);
 
   return (
     <main className="relative min-h-screen bg-[#050816] text-white">
@@ -36,7 +71,7 @@ export default async function TripsPage() {
             </Link>
 
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-cyan-500/20 text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-500/20">
                 <Compass size={24} />
               </div>
 
@@ -62,7 +97,17 @@ export default async function TripsPage() {
         </div>
 
         {/* Trip History */}
-        <TripHistoryClient trips={trips} />
+        {loading ? (
+          <div className="rounded-2xl border border-slate-700/60 bg-slate-800/40 p-8 text-center text-slate-400">
+            Loading trips...
+          </div>
+        ) : error ? (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-8 text-center text-red-400">
+            {error}
+          </div>
+        ) : (
+          <TripHistoryClient trips={trips} />
+        )}
       </div>
     </main>
   );

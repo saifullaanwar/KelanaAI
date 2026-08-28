@@ -1,6 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from jose import jwt, JWTError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from models.user import User
 
 from services.trip_service import (
     calculate_daily_budget,
@@ -9,19 +12,86 @@ from services.trip_service import (
 )
 
 from services.bedrock_service import get_ai_recommendation
+from services.auth_service import register, login
+
 from database import SessionLocal, init_db
 from models.trip import Trip
 
 
+SECRET_KEY = "your-secret-key"
+ALGORITHM = "HS256"
+
+security = HTTPBearer()
+
+
 # ============================================================
-# REQUEST MODEL
+# GET CURRENT USER FROM JWT
 # ============================================================
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    token = credentials.credentials
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+
+        user_id = payload.get("sub")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token",
+            )
+
+        db = SessionLocal()
+
+        try:
+            user = db.query(User).filter(User.id == int(user_id)).first()
+
+            if user is None:
+                raise HTTPException(
+                    status_code=401,
+                    detail="User not found",
+                )
+
+            return user
+
+        finally:
+            db.close()
+
+    except (JWTError, ValueError):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token",
+        )
+
+
+# ============================================================
+# REQUEST MODELS
+# ============================================================
+
 
 class TripRequest(BaseModel):
     destination: str
     days: int
     budget: float
     travel_style: str
+
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 
 # ============================================================
@@ -55,21 +125,99 @@ init_db()
 # ROOT
 # ============================================================
 
+
 @app.get("/")
 def home():
-    return {
-        "message": "Welcome to KelanaAI"
-    }
+    return {"message": "Welcome to KelanaAI"}
 
 
 # ============================================================
 # HEALTH
 # ============================================================
 
+
 @app.get("/health")
 def health():
+    return {"status": "OK"}
+
+
+# ============================================================
+# REGISTER USER
+# ============================================================
+
+
+@app.post("/api/v1/auth/register")
+def register_user(request: RegisterRequest):
+
+    db = SessionLocal()
+
+    try:
+        try:
+            user = register(
+                db=db,
+                name=request.name,
+                email=request.email,
+                password=request.password,
+            )
+
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail=str(error),
+            )
+
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+        }
+
+    finally:
+        db.close()
+
+
+# ============================================================
+# LOGIN USER
+# ============================================================
+
+
+@app.post("/api/v1/auth/login")
+def login_user(request: LoginRequest):
+
+    db = SessionLocal()
+
+    try:
+        try:
+            result = login(
+                db=db,
+                email=request.email,
+                password=request.password,
+            )
+
+        except ValueError as error:
+            raise HTTPException(
+                status_code=401,
+                detail=str(error),
+            )
+
+        return result
+
+    finally:
+        db.close()
+
+
+# ============================================================
+# GET CURRENT USER
+# ============================================================
+
+@app.get("/api/v1/auth/me")
+def get_me(
+    user: User = Depends(get_current_user),
+):
     return {
-        "status": "OK"
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
     }
 
 
@@ -77,8 +225,12 @@ def health():
 # CREATE TRIP
 # ============================================================
 
+
 @app.post("/api/v1/trips")
-def create_trip(request: TripRequest):
+def create_trip(
+    request: TripRequest,
+    user: User = Depends(get_current_user),
+):
 
     # --------------------------------------------------------
     # Calculate business logic
@@ -86,12 +238,10 @@ def create_trip(request: TripRequest):
 
     daily_budget = calculate_daily_budget(
         request.budget,
-        request.days
+        request.days,
     )
 
-    category = get_trip_category(
-        request.budget
-    )
+    category = get_trip_category(request.budget)
 
     recommendation_transport = get_transportation_recommendation(
         category
@@ -121,6 +271,7 @@ def create_trip(request: TripRequest):
         # ----------------------------------------------------
 
         trip = Trip(
+            user_id=user.id,
             destination=request.destination,
             days=request.days,
             budget=request.budget,
@@ -162,6 +313,7 @@ def create_trip(request: TripRequest):
 # TRIP CATEGORIES
 # ============================================================
 
+
 @app.get("/api/v1/trip-categories")
 def get_trip_categories():
     return [
@@ -174,6 +326,7 @@ def get_trip_categories():
 # ============================================================
 # DESTINATION RECOMMENDATIONS
 # ============================================================
+
 
 @app.get("/api/v1/recommendations")
 def get_recommendations():
@@ -188,6 +341,7 @@ def get_recommendations():
 # TRANSPORTATION RECOMMENDATIONS
 # ============================================================
 
+
 @app.get("/api/v1/transportations")
 def get_transportations():
     return [
@@ -201,14 +355,20 @@ def get_transportations():
 # GET ALL TRIPS
 # ============================================================
 
+
 @app.get("/api/v1/trips")
-def list_trips():
+def list_trips(
+    user: User = Depends(get_current_user),
+):
 
     db = SessionLocal()
 
     try:
-
-        trips = db.query(Trip).all()
+        trips = (
+            db.query(Trip)
+            .filter(Trip.user_id == user.id)
+            .all()
+        )
 
         return trips
 
@@ -219,6 +379,7 @@ def list_trips():
 # ============================================================
 # GET ONE TRIP
 # ============================================================
+
 
 @app.get("/api/v1/trips/{trip_id}")
 def get_trip(trip_id: int):
@@ -236,7 +397,7 @@ def get_trip(trip_id: int):
         if trip is None:
             raise HTTPException(
                 status_code=404,
-                detail=f"Trip with id {trip_id} not found"
+                detail=f"Trip with id {trip_id} not found",
             )
 
         return {
@@ -258,6 +419,7 @@ def get_trip(trip_id: int):
 # DELETE TRIP
 # ============================================================
 
+
 @app.delete("/api/v1/trips/{trip_id}")
 def delete_trip(trip_id: int):
 
@@ -274,7 +436,7 @@ def delete_trip(trip_id: int):
         if trip is None:
             raise HTTPException(
                 status_code=404,
-                detail=f"Trip with id {trip_id} not found"
+                detail=f"Trip with id {trip_id} not found",
             )
 
         db.delete(trip)
@@ -292,10 +454,11 @@ def delete_trip(trip_id: int):
 # UPDATE TRIP
 # ============================================================
 
+
 @app.put("/api/v1/trips/{trip_id}")
 def update_trip(
     trip_id: int,
-    request: TripRequest
+    request: TripRequest,
 ):
 
     db = SessionLocal()
@@ -315,7 +478,7 @@ def update_trip(
         if not trip:
             raise HTTPException(
                 status_code=404,
-                detail=f"Trip with id {trip_id} not found"
+                detail=f"Trip with id {trip_id} not found",
             )
 
         # ----------------------------------------------------
@@ -324,7 +487,7 @@ def update_trip(
 
         daily_budget = calculate_daily_budget(
             request.budget,
-            request.days
+            request.days,
         )
 
         category = get_trip_category(
@@ -332,9 +495,7 @@ def update_trip(
         )
 
         recommendation_transport = (
-            get_transportation_recommendation(
-                category
-            )
+            get_transportation_recommendation(category)
         )
 
         # ----------------------------------------------------
@@ -379,8 +540,11 @@ def update_trip(
 # GENERATE AI RECOMMENDATION
 # ============================================================
 
+
 @app.post("/api/v1/trips/{trip_id}/generate")
-def generate_trip_recommendation(trip_id: int):
+def generate_trip_recommendation(
+    trip_id: int,
+):
 
     db = SessionLocal()
 
@@ -399,7 +563,7 @@ def generate_trip_recommendation(trip_id: int):
         if trip is None:
             raise HTTPException(
                 status_code=404,
-                detail=f"Trip with id {trip_id} not found"
+                detail=f"Trip with id {trip_id} not found",
             )
 
         # ----------------------------------------------------

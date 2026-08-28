@@ -2,23 +2,36 @@
 
 KelanaAI is an AI-powered travel planning application built with Python during the AI Native Software Engineer Bootcamp.
 
-The project is developed progressively from a simple console application into a full-stack travel planning platform using:
+The project is developed progressively from a simple console application into a full-stack AI travel planning platform using:
 
 - Python
 - FastAPI
 - PostgreSQL
 - SQLAlchemy
 - Amazon Bedrock
+- Amazon Nova Lite
+- Boto3
 - Next.js
 - React
 - TypeScript
 - Tailwind CSS
+- Lucide React
+- Three.js
+- React Three Fiber
+- React Three Drei
+- React Markdown
+- JWT Authentication
+- bcrypt
 
-KelanaAI allows users to enter their destination, budget, number of days, and travel style through a web interface. The backend processes the request, generates an AI-powered itinerary using Amazon Bedrock, and stores the generated recommendation in PostgreSQL.
+KelanaAI allows users to enter their destination, budget, number of days, and travel style through a web interface.
+
+The backend processes the request, generates an AI-powered itinerary using Amazon Bedrock, and stores the generated recommendation in PostgreSQL.
+
+The application also provides user authentication, profile management, personalized navigation, and user-specific travel history.
 
 ---
 
-# Project Evolution
+## Project Evolution
 
 KelanaAI has been developed progressively through multiple sessions:
 
@@ -31,12 +44,28 @@ KelanaAI has been developed progressively through multiple sessions:
 | Session 5 | Amazon Bedrock AI Integration | Completed |
 | Session 6 | Next.js Frontend | Completed |
 | Session 7 | Trip History Dashboard & Enhanced Trip Cards | Completed |
+| Session 8 | User Authentication, Profile & Personalized Navigation | Completed |
 
-The application has evolved from a simple command-line travel calculator into a full-stack AI travel planning application with persistent trip history and a multi-page web interface.
+The application has evolved from a simple command-line travel calculator into a full-stack AI travel planning platform with:
+
+- AI-powered itinerary generation
+- PostgreSQL persistence
+- Trip history
+- Trip detail pages
+- Search and sorting
+- Pagination
+- User registration
+- User login
+- JWT authentication
+- User profile
+- User-specific trip history
+- Personalized navigation
+- Logout functionality
+- Personalized welcome message
 
 ---
 
-# Project Structure
+## Project Structure
 
 ```text
 kelana-ai/
@@ -51,11 +80,13 @@ kelana-ai/
 │   ├── .env
 │   │
 │   ├── models/
-│   │   └── trip.py
+│   │   ├── trip.py
+│   │   └── user.py
 │   │
 │   └── services/
 │       ├── trip_service.py
-│       └── bedrock_service.py
+│       ├── bedrock_service.py
+│       └── auth_service.py
 │
 └── frontend/
     ├── .env.local
@@ -71,6 +102,18 @@ kelana-ai/
     │   ├── layout.tsx
     │   ├── page.tsx
     │   │
+    │   ├── components/
+    │   │   └── TravelGlobe.tsx
+    │   │
+    │   ├── login/
+    │   │   └── page.tsx
+    │   │
+    │   ├── register/
+    │   │   └── page.tsx
+    │   │
+    │   ├── profile/
+    │   │   └── page.tsx
+    │   │
     │   └── trips/
     │       ├── page.tsx
     │       │
@@ -81,10 +124,13 @@ kelana-ai/
     │               └── itineraryParser.ts
     │
     ├── components/
+    │   ├── AuthNav.tsx
+    │   ├── LogoutButton.tsx
     │   ├── TripCard.tsx
     │   └── TripHistoryClient.tsx
     │
     ├── services/
+    │   ├── authService.ts
     │   └── tripService.ts
     │
     ├── types/
@@ -100,48 +146,50 @@ kelana-ai/
 KelanaAI follows a layered full-stack architecture.
 
 ```text
-┌──────────────────────┐
-│        User          │
-│      Browser         │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│     Next.js          │
-│      Frontend        │
-│                      │
-│ React + TypeScript   │
-│ Tailwind CSS         │
-│ Lucide React         │
-│ Three.js             │
-│ React Markdown       │
-└──────────┬───────────┘
-           │
-           │ HTTP / JSON
-           ▼
-┌──────────────────────┐
-│       FastAPI        │
-│       Backend        │
-│                      │
-│ Business Logic       │
-│ REST API             │
-└───────┬────────┬─────┘
-        │        │
-        │        ▼
-        │   ┌───────────────┐
-        │   │ Amazon        │
-        │   │ Bedrock       │
-        │   │               │
-        │   │ Nova Lite AI  │
-        │   └───────────────┘
+┌──────────────────────────────┐
+│            User              │
+│          Browser             │
+└──────────────┬───────────────┘
+               │
+               ▼
+┌──────────────────────────────┐
+│          Next.js             │
+│          Frontend            │
+│                              │
+│ React + TypeScript           │
+│ Tailwind CSS                 │
+│ Lucide React                 │
+│ Three.js                     │
+│ React Markdown               │
+└──────────────┬───────────────┘
+               │
+               │ HTTP / JSON
+               ▼
+┌──────────────────────────────┐
+│           FastAPI            │
+│           Backend            │
+│                              │
+│ REST API                     │
+│ Business Logic               │
+│ Authentication               │
+│ JWT                          │
+└───────┬──────────────┬───────┘
+        │              │
+        │              ▼
+        │      ┌─────────────────┐
+        │      │ Amazon Bedrock  │
+        │      │                 │
+        │      │ Nova Lite AI    │
+        │      └─────────────────┘
         │
         ▼
-┌──────────────────────┐
-│     PostgreSQL       │
-│                      │
-│ Trip Data            │
-│ AI Recommendation    │
-└──────────────────────┘
+┌──────────────────────────────┐
+│          PostgreSQL          │
+│                              │
+│ Users                        │
+│ Trips                        │
+│ AI Recommendations           │
+└──────────────────────────────┘
 ```
 
 The frontend never communicates directly with Amazon Bedrock.
@@ -168,6 +216,26 @@ Next.js
 Browser
 ```
 
+For authentication:
+
+```text
+User
+  ↓
+Login / Register
+  ↓
+Next.js
+  ↓
+FastAPI
+  ↓
+PostgreSQL
+  ↓
+JWT
+  ↓
+Browser localStorage
+  ↓
+Authenticated API Requests
+```
+
 ---
 
 # Backend
@@ -186,6 +254,9 @@ The backend is built with Python and FastAPI.
 - Amazon Nova Lite
 - Boto3
 - Python-dotenv
+- bcrypt
+- python-jose
+- JWT
 
 ---
 
@@ -277,6 +348,8 @@ The API reuses the business logic from `trip_service.py`.
 
 Returns a welcome message.
 
+Example:
+
 ```json
 {
   "message": "Welcome to KelanaAI"
@@ -286,6 +359,8 @@ Returns a welcome message.
 ### GET `/health`
 
 Returns the API health status.
+
+Example:
 
 ```json
 {
@@ -331,25 +406,9 @@ Returns available trip categories.
 
 Returns recommended destinations.
 
-```json
-[
-  "Tokyo Tower",
-  "Mount Fuji",
-  "Shibuya"
-]
-```
-
 ### GET `/api/v1/transportations`
 
 Returns available transportation recommendations.
-
-```json
-[
-  "Bus",
-  "Train",
-  "Flight"
-]
-```
 
 ---
 
@@ -357,7 +416,9 @@ Returns available transportation recommendations.
 
 Session 4 introduces persistent data storage to KelanaAI.
 
-The application is no longer stateless. Trip data is stored permanently in PostgreSQL using SQLAlchemy ORM.
+The application is no longer stateless.
+
+Trip data is stored permanently in PostgreSQL using SQLAlchemy ORM.
 
 ## Technologies
 
@@ -383,24 +444,28 @@ The `trips` table stores:
 - Daily budget
 - AI recommendation
 
-## ORM Model
+The `users` table stores authenticated user information.
 
-The database model is defined in:
+---
+
+# ORM Models
+
+Trip model:
 
 ```text
 backend/models/trip.py
 ```
 
-The database connection and SQLAlchemy session are configured in:
+User model:
+
+```text
+backend/models/user.py
+```
+
+Database connection:
 
 ```text
 backend/database.py
-```
-
-The AI recommendation is stored using:
-
-```python
-ai_recommendation = Column(Text, nullable=True)
 ```
 
 ---
@@ -426,19 +491,13 @@ The application automatically calculates:
 
 ### GET `/api/v1/trips`
 
-Returns all trips stored in PostgreSQL.
+Returns trips stored in PostgreSQL.
 
 ## Read One
 
 ### GET `/api/v1/trips/{id}`
 
 Returns a specific trip based on its ID.
-
-If the trip does not exist, the API returns:
-
-```text
-404 Not Found
-```
 
 ## Update
 
@@ -457,12 +516,6 @@ Before saving the changes, the application recalculates:
 ### DELETE `/api/v1/trips/{id}`
 
 Deletes a trip from PostgreSQL based on its ID.
-
-If the trip does not exist, the API returns:
-
-```text
-404 Not Found
-```
 
 ---
 
@@ -486,7 +539,9 @@ Instead of generating recommendations only from predefined business rules, Kelan
 - Python-dotenv
 - Git & GitHub
 
-## Amazon Bedrock Integration
+---
+
+# Amazon Bedrock Integration
 
 The Amazon Bedrock integration is implemented in:
 
@@ -496,14 +551,16 @@ backend/services/bedrock_service.py
 
 The service is responsible for:
 
-- Loading AWS configuration from environment variables
+- Loading AWS configuration
 - Configuring the Bedrock Runtime client
 - Connecting to Amazon Bedrock
 - Sending travel information to the AI model
 - Generating a personalized travel itinerary
 - Returning the AI-generated recommendation
 
-## Environment Variables
+---
+
+# Environment Variables
 
 Backend configuration is stored in `.env`.
 
@@ -511,7 +568,6 @@ Example:
 
 ```env
 DATABASE_URL=your_database_url
-
 AWS_BEARER_TOKEN_BEDROCK=your_bedrock_token
 AWS_REGION=ap-southeast-2
 MODEL_ID=amazon.nova-lite-v1:0
@@ -573,7 +629,7 @@ The endpoint:
 2. Reads the destination, number of days, budget, and travel style.
 3. Sends the trip information to Amazon Bedrock.
 4. Receives the AI-generated itinerary.
-5. Stores the recommendation in the `ai_recommendation` column.
+5. Stores the recommendation in PostgreSQL.
 6. Returns the generated recommendation.
 
 Example:
@@ -586,18 +642,14 @@ POST /api/v1/trips/5/generate
 
 # AI Recommendation Persistence
 
-The generated recommendation is stored in PostgreSQL using:
+The generated recommendation is stored in PostgreSQL.
 
-```python
-ai_recommendation = Column(Text, nullable=True)
-```
-
-Example database record:
+Example:
 
 | Column | Example |
 |---|---|
 | `id` | `5` |
-| `destination` | `japan` |
+| `destination` | `Japan` |
 | `days` | `5` |
 | `budget` | `8000` |
 | `category` | `Luxury` |
@@ -616,7 +668,7 @@ Previously, users interacted with the backend through Swagger UI or HTTP request
 
 Now users can interact with KelanaAI directly through a web application.
 
-## Goal
+## Goals
 
 The goal of Session 6 is to create a user-friendly frontend that:
 
@@ -631,8 +683,6 @@ The goal of Session 6 is to create a user-friendly frontend that:
 ---
 
 # Frontend Technologies
-
-Session 6 introduces the following technologies:
 
 - Next.js
 - React
@@ -683,7 +733,7 @@ frontend/app/components/TravelGlobe.tsx
 
 # Frontend Environment Configuration
 
-The frontend uses a local environment file:
+The frontend uses:
 
 ```text
 frontend/.env.local
@@ -705,48 +755,42 @@ const API_URL =
   "http://localhost:8000";
 ```
 
-The frontend then calls:
-
-```text
-POST ${API_URL}/api/v1/trips
-```
-
-This avoids hardcoding the backend URL throughout the application.
-
-> `.env.local` should remain local and should not be committed to Git.
-
 ---
 
 # Frontend User Flow
 
-The user flow is now:
+The main user flow is:
 
 ```text
 1. Open KelanaAI
        ↓
-2. Enter destination
+2. Register / Login
        ↓
-3. Enter budget
+3. Enter destination
        ↓
-4. Enter number of days
+4. Enter budget
        ↓
-5. Select travel style
+5. Enter number of days
        ↓
-6. Click "Generate My Trip"
+6. Select travel style
        ↓
-7. Frontend sends JSON to FastAPI
+7. Click "Generate My Trip"
        ↓
-8. FastAPI processes the request
+8. Frontend sends JSON to FastAPI
        ↓
-9. Amazon Bedrock generates itinerary
+9. FastAPI processes the request
        ↓
-10. Recommendation is stored in PostgreSQL
+10. Amazon Bedrock generates itinerary
        ↓
-11. FastAPI returns JSON
+11. Recommendation is stored in PostgreSQL
        ↓
-12. Next.js receives the response
+12. FastAPI returns JSON
        ↓
-13. React renders the itinerary
+13. Next.js receives the response
+       ↓
+14. React renders the itinerary
+       ↓
+15. Trip becomes available in Trip History
 ```
 
 ---
@@ -818,9 +862,7 @@ const response = await fetch(
 );
 ```
 
-The backend does not need to change when the request comes from Next.js.
-
-FastAPI continues to receive a standard HTTP request containing JSON.
+The backend continues to receive a standard HTTP request containing JSON.
 
 ---
 
@@ -836,25 +878,13 @@ Backend → http://localhost:8000
 
 FastAPI is configured with CORS middleware to allow the Next.js frontend to communicate with the backend.
 
-Example:
-
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
-
 ---
 
 # React Markdown
 
 Amazon Bedrock returns the itinerary in Markdown format.
 
-For example:
+Example:
 
 ```markdown
 # 5-Day Family Travel Itinerary to Japan
@@ -865,7 +895,6 @@ For example:
 
 - Visit Senso-ji Temple
 - Explore Nakamise Shopping Street
-- Have breakfast at a local café
 
 ### Afternoon
 
@@ -875,18 +904,11 @@ For example:
 ### Evening
 
 - Dinner at a local restaurant
-- Explore Tokyo nightlife
 ```
 
 The frontend uses `react-markdown` to convert the Markdown into readable UI elements.
 
-The package is installed with:
-
-```bash
-npm install react-markdown
-```
-
-This allows headings, lists, bold text, paragraphs, and other Markdown elements to be rendered properly instead of displaying raw Markdown syntax.
+This allows headings, lists, bold text, paragraphs, and other Markdown elements to be rendered properly.
 
 ---
 
@@ -894,9 +916,9 @@ This allows headings, lists, bold text, paragraphs, and other Markdown elements 
 
 Generating an AI itinerary can take several seconds.
 
-Session 6 introduces a loading state so users receive immediate visual feedback.
+KelanaAI provides a loading state so users receive immediate visual feedback.
 
-When the user generates a trip, the button changes from:
+The button changes from:
 
 ```text
 Generate My Trip
@@ -910,52 +932,21 @@ Creating your itinerary...
 
 A loading spinner is displayed while waiting for Amazon Bedrock.
 
-The purpose is to make the AI generation process feel intentional rather than making the application appear frozen.
-
 ---
 
 # Error Handling
 
-The frontend also handles failed API requests.
+The frontend handles failed API requests.
 
 If the backend is unavailable or the request fails, users receive a friendly message instead of seeing a broken interface.
 
-Example:
-
-```text
-We couldn't generate your itinerary right now.
-Please make sure the backend is running and try again.
-```
-
-The implementation uses `try/catch` around the API request.
-
-Example:
-
-```typescript
-try {
-  const response = await fetch(...);
-
-  if (!response.ok) {
-    throw new Error(
-      `Request failed with status ${response.status}`
-    );
-  }
-
-  const data = await response.json();
-
-  setTrip(data);
-} catch (error) {
-  setError(
-    "We couldn't generate your itinerary right now."
-  );
-}
-```
+The implementation uses `try/catch` around API requests.
 
 ---
 
 # UI Design
 
-Session 6 introduces a modern dark travel-planning interface.
+KelanaAI uses a modern dark travel-planning interface.
 
 The frontend uses:
 
@@ -969,6 +960,7 @@ The frontend uses:
 - Background grid
 - AI status indicators
 - Custom scrollbars
+- Travel-focused visual elements
 
 The visual design is intended to make KelanaAI feel like a modern AI product rather than a basic CRUD application.
 
@@ -978,7 +970,7 @@ The visual design is intended to make KelanaAI feel like a modern AI product rat
 
 The homepage includes an interactive visual element created with Three.js.
 
-The globe component is implemented using:
+The globe component uses:
 
 ```text
 @react-three/fiber
@@ -993,12 +985,6 @@ frontend/app/components/TravelGlobe.tsx
 ```
 
 The globe provides visual identity to the homepage and reinforces the travel-focused theme.
-
-The frontend installation:
-
-```bash
-npm install lucide-react three @react-three/fiber @react-three/drei
-```
 
 ---
 
@@ -1016,14 +1002,11 @@ Examples include:
 - Check
 - Arrow Right
 - Loading Spinner
-
-The package is installed with:
-
-```bash
-npm install lucide-react
-```
-
-Using an icon library keeps the UI consistent and avoids manually creating SVG icons.
+- User
+- Login
+- Logout
+- User Plus
+- History
 
 ---
 
@@ -1046,8 +1029,6 @@ On larger screens, the homepage uses a two-column layout:
 
 The interface adapts to smaller screens while maintaining the core travel-planning functionality.
 
-The itinerary itself has an internal scroll area so long AI-generated responses do not break the main application layout.
-
 ---
 
 # Result Interface
@@ -1067,12 +1048,15 @@ Example:
 YOUR TRIP PLAN
 
 Japan
+
 5-day Family journey
 
 Budget       Daily       Category
+
 $2,000       $400        Standard
 
 Transport
+
 Train
 
 AI ITINERARY
@@ -1088,8 +1072,6 @@ Day 2: Kyoto
 Day 3: Kyoto
 ...
 ```
-
-The itinerary is displayed inside a dedicated scrollable content area.
 
 ---
 
@@ -1109,7 +1091,7 @@ This resets the current result and returns the user to the travel planning form.
 
 Session 7 transforms KelanaAI from a single-page travel planner into a multi-page application with persistent trip history.
 
-The frontend now connects the existing PostgreSQL and FastAPI backend to a dedicated Trip History Dashboard.
+The frontend connects the existing PostgreSQL and FastAPI backend to a dedicated Trip History Dashboard.
 
 ## Goals
 
@@ -1195,70 +1177,6 @@ Each Trip Card provides:
 
 ---
 
-# Destination Icons
-
-Trip Cards provide a visual destination indicator.
-
-Destination names are mapped to appropriate country flags or visual fallbacks where applicable.
-
-This makes the dashboard easier to scan visually and helps distinguish destinations quickly.
-
----
-
-# Currency & Budget Formatting
-
-Trip budgets are formatted using locale-aware number formatting.
-
-Example:
-
-```text
-USD 2000
-```
-
-becomes:
-
-```text
-USD 2,000
-```
-
-The formatting is handled through JavaScript's:
-
-```typescript
-toLocaleString()
-```
-
-method.
-
----
-
-# Category Badge
-
-Each Trip Card displays the trip category as a badge.
-
-Supported budget categories include:
-
-- Backpacker
-- Standard
-- Luxury
-
-The badge provides a compact visual representation of the trip's budget category.
-
----
-
-# Travel Style Badge
-
-Each Trip Card also displays the travel style associated with the trip.
-
-Examples include:
-
-- Family
-- Solo
-- Couple
-
-The travel style provides additional context without requiring the user to open the full trip detail page.
-
----
-
 # Search & Sorting
 
 The Trip History Dashboard supports searching and sorting.
@@ -1277,7 +1195,7 @@ Luxury
 Family
 ```
 
-The dashboard also supports sorting by:
+The dashboard supports sorting by:
 
 - Latest
 - Oldest
@@ -1314,9 +1232,7 @@ The pagination automatically resets to page 1 when search or sorting criteria ch
 
 # Structured AI Itinerary
 
-Long AI-generated Markdown responses are no longer displayed as one large block of raw content.
-
-The Trip Detail page parses the AI itinerary into structured sections.
+Long AI-generated Markdown responses are parsed into structured sections.
 
 The parser is implemented in:
 
@@ -1363,13 +1279,11 @@ The day card contains:
 - Afternoon activities
 - Evening activities
 
-The layout keeps activities grouped by time of day so users can scan the itinerary more easily.
-
 ---
 
 # Itinerary Activity Cards
 
-Activities inside each time slot display structured information such as:
+Activities inside each time slot can display structured information such as:
 
 - Activity title
 - Description
@@ -1377,7 +1291,7 @@ Activities inside each time slot display structured information such as:
 - Estimated cost
 - Additional information when available
 
-This allows the AI-generated itinerary to be presented as a more readable travel plan instead of a large Markdown document.
+This allows the AI-generated itinerary to be presented as a readable travel plan instead of a large Markdown document.
 
 ---
 
@@ -1393,13 +1307,11 @@ Examples include:
 - Currency information
 - Other general travel tips
 
-These recommendations are displayed separately so users do not mistake trip-wide information for recommendations belonging to the final day.
-
 ---
 
 # Trip Summary
 
-The Trip Detail page can also display a final Trip Summary containing:
+The Trip Detail page can display a final Trip Summary containing:
 
 - Budget-related information
 - Overall trip information
@@ -1409,65 +1321,726 @@ The summary is kept separate from individual itinerary days because it describes
 
 ---
 
-# Session 7 Frontend Structure
+# Session 8 — Authentication & User Profile
 
-The main Session 7 frontend components are:
+Session 8 introduces user authentication and personalization.
+
+KelanaAI now supports:
+
+- User registration
+- User login
+- JWT authentication
+- Password hashing
+- Current user retrieval
+- User profile page
+- Personalized navbar
+- Personalized welcome message
+- Logout
+- Authentication-aware navigation
+- User-specific trip information
+
+This transforms KelanaAI from a shared travel planning application into a personalized travel platform.
+
+---
+
+# Authentication Architecture
+
+The authentication flow is:
 
 ```text
-frontend/
-│
-├── app/
-│   └── trips/
-│       ├── page.tsx
-│       │
-│       └── [id]/
-│           ├── page.tsx
-│           └── _components/
-│               ├── ItineraryView.tsx
-│               └── itineraryParser.ts
-│
-├── components/
-│   ├── TripCard.tsx
-│   └── TripHistoryClient.tsx
-│
-├── services/
-│   └── tripService.ts
-│
-└── types/
-    └── trip.ts
+┌──────────────┐
+│     User     │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────────┐
+│ Next.js Login    │
+│ /login           │
+└────────┬─────────┘
+         │
+         │ POST /api/v1/auth/login
+         ▼
+┌──────────────────┐
+│ FastAPI Backend  │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ PostgreSQL       │
+│ Users            │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Verify Password  │
+│ bcrypt           │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Generate JWT     │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Next.js          │
+│ localStorage     │
+└──────────────────┘
 ```
 
 ---
 
-# Session 7 Data Flow
+# Authentication Technologies
 
-The Trip History Dashboard uses the existing backend persistence layer.
+Session 8 introduces:
 
-The flow is:
+- JWT
+- bcrypt
+- python-jose
+- FastAPI authentication dependencies
+- localStorage
+- React state
+- Custom browser authentication events
+
+---
+
+# User Model
+
+Authenticated users are stored in PostgreSQL.
+
+The user model is located at:
 
 ```text
-PostgreSQL
-    ↓
-FastAPI
-    ↓
-GET /api/v1/trips
-    ↓
-Next.js Trip History Dashboard
-    ↓
-Trip Cards
-    ↓
-User selects View Details
-    ↓
-GET /api/v1/trips/{id}
-    ↓
-Trip Detail Page
-    ↓
-Itinerary Parser
-    ↓
-Structured AI Itinerary
+backend/models/user.py
 ```
 
-This connects KelanaAI's persistent backend data with its frontend interface.
+The user contains information such as:
+
+- User ID
+- Name
+- Email
+- Password hash
+
+Passwords are never stored as plain text.
+
+---
+
+# Password Hashing
+
+Passwords are hashed using bcrypt before being stored.
+
+Example:
+
+```python
+bcrypt.hashpw(
+    password.encode("utf-8"),
+    bcrypt.gensalt()
+)
+```
+
+During login, the password is verified using bcrypt.
+
+```python
+bcrypt.checkpw(
+    password.encode("utf-8"),
+    user.password_hash.encode("utf-8")
+)
+```
+
+This prevents plain-text passwords from being stored in the database.
+
+---
+
+# Authentication Service
+
+Authentication business logic is implemented in:
+
+```text
+backend/services/auth_service.py
+```
+
+The service is responsible for:
+
+- Registering users
+- Checking existing email addresses
+- Hashing passwords
+- Verifying login credentials
+- Generating JWT access tokens
+
+---
+
+# JWT Authentication
+
+After successful login, the backend generates a JWT.
+
+The JWT contains the user's ID:
+
+```python
+{
+    "sub": str(user.id),
+}
+```
+
+The token is returned to the frontend:
+
+```json
+{
+  "access_token": "JWT_TOKEN",
+  "token_type": "bearer"
+}
+```
+
+The frontend stores the token in:
+
+```text
+localStorage
+```
+
+using the key:
+
+```text
+access_token
+```
+
+---
+
+# Authentication API
+
+## POST `/api/v1/auth/register`
+
+Registers a new user.
+
+Example request:
+
+```json
+{
+  "name": "Alice",
+  "email": "alice@email.com",
+  "password": "password123"
+}
+```
+
+---
+
+# Login API
+
+## POST `/api/v1/auth/login`
+
+Authenticates an existing user.
+
+Example request:
+
+```json
+{
+  "email": "alice@email.com",
+  "password": "password123"
+}
+```
+
+Example response:
+
+```json
+{
+  "access_token": "JWT_TOKEN",
+  "token_type": "bearer"
+}
+```
+
+---
+
+# Current User API
+
+## GET `/api/v1/auth/me`
+
+Returns the currently authenticated user based on the JWT.
+
+Example response:
+
+```json
+{
+  "id": 2,
+  "name": "Alice",
+  "email": "alice@email.com"
+}
+```
+
+The endpoint does not require a user ID in the URL.
+
+The backend identifies the user from the JWT.
+
+---
+
+# Login Page
+
+The login page is located at:
+
+```text
+frontend/app/login/page.tsx
+```
+
+The login flow is:
+
+```text
+User enters email
+       ↓
+User enters password
+       ↓
+POST /api/v1/auth/login
+       ↓
+Backend validates credentials
+       ↓
+Backend returns JWT
+       ↓
+JWT stored in localStorage
+       ↓
+auth-changed event dispatched
+       ↓
+Redirect to homepage
+```
+
+---
+
+# Register Page
+
+The registration page is located at:
+
+```text
+frontend/app/register/page.tsx
+```
+
+The registration page allows users to create an account before using authenticated features.
+
+---
+
+# Auth Service
+
+The frontend authentication service is located at:
+
+```text
+frontend/services/authService.ts
+```
+
+The service contains functionality for retrieving the current authenticated user.
+
+The token is sent to the backend using:
+
+```http
+Authorization: Bearer <token>
+```
+
+---
+
+# Authentication State
+
+KelanaAI uses React state to determine whether a user is logged in.
+
+The authentication state is based on the presence of:
+
+```text
+access_token
+```
+
+in localStorage.
+
+When the authentication state changes, the frontend dispatches a custom event:
+
+```text
+auth-changed
+```
+
+This allows different components to synchronize their authentication state within the same browser tab.
+
+The application also listens to:
+
+```text
+storage
+```
+
+events to synchronize authentication changes between browser tabs.
+
+---
+
+# AuthNav
+
+The personalized navigation component is:
+
+```text
+frontend/components/AuthNav.tsx
+```
+
+The navbar dynamically changes depending on authentication status.
+
+## When the user is not logged in
+
+The navbar displays:
+
+```text
+Login
+Register
+```
+
+## When the user is logged in
+
+The navbar displays:
+
+```text
+Logout
+Profile
+```
+
+The navigation also keeps:
+
+```text
+Plan Trip
+Trip History
+```
+
+in the central area of the navbar.
+
+---
+
+# Personalized Welcome
+
+After login, the navbar can display a personalized welcome message such as:
+
+```text
+Welcome back, Alice 👋
+```
+
+The welcome message is presented as a temporary UI notification rather than permanently occupying the navigation bar.
+
+This provides a small personalized interaction without making the navbar crowded.
+
+---
+
+# Logout
+
+When the user clicks Logout:
+
+```text
+localStorage
+      ↓
+Remove access_token
+      ↓
+Update authentication state
+      ↓
+Dispatch auth-changed event
+      ↓
+Redirect to /login
+```
+
+The logout functionality clears the JWT from localStorage.
+
+---
+
+# Profile Page
+
+The profile page is available at:
+
+```text
+/profile
+```
+
+The page is implemented in:
+
+```text
+frontend/app/profile/page.tsx
+```
+
+The profile page retrieves the current user using:
+
+```text
+GET /api/v1/auth/me
+```
+
+The profile page displays:
+
+- Name
+- Email
+- Total Trips Generated
+
+Example:
+
+```text
+My Profile
+
+Name
+Alice
+
+Email
+alice@email.com
+
+Total Trips Generated
+4
+```
+
+---
+
+# Profile Data Flow
+
+The profile page uses:
+
+```text
+localStorage
+     ↓
+access_token
+     ↓
+GET /api/v1/auth/me
+     ↓
+FastAPI
+     ↓
+JWT validation
+     ↓
+Current User
+     ↓
+Next.js Profile Page
+```
+
+The profile page also retrieves the user's trips and calculates the total number of trips.
+
+---
+
+# Protected Profile Access
+
+The profile page checks whether an authentication token exists.
+
+If no token is found:
+
+```text
+/profile
+    ↓
+No access_token
+    ↓
+Redirect to /login
+```
+
+If the token is invalid or the API rejects it:
+
+```text
+API authentication failure
+        ↓
+Remove access_token
+        ↓
+Redirect to /login
+```
+
+---
+
+# Personalized Navigation Layout
+
+The current navbar follows this structure:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ KelanaAI          Plan Trip   Trip History   Logout Profile │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The design intentionally separates the navigation into three areas:
+
+```text
+LEFT
+KelanaAI
+
+CENTER
+Plan Trip
+Trip History
+
+RIGHT
+Logout
+Profile
+```
+
+When the user is not authenticated:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ KelanaAI          Plan Trip   Trip History   Login Register │
+└─────────────────────────────────────────────────────────────┘
+```
+
+This keeps the main navigation visually balanced.
+
+---
+
+# Authentication User Flow
+
+The complete authentication flow is:
+
+```text
+                     ┌─────────────┐
+                     │    User     │
+                     └──────┬──────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+              ▼                           ▼
+        ┌───────────┐               ┌───────────┐
+        │ Register  │               │   Login   │
+        └─────┬─────┘               └─────┬─────┘
+              │                           │
+              └─────────────┬─────────────┘
+                            ▼
+                    ┌──────────────┐
+                    │   FastAPI    │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │  PostgreSQL  │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │     JWT      │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ localStorage │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ Authenticated│
+                    │     User     │
+                    └──────┬───────┘
+                           │
+             ┌─────────────┼─────────────┐
+             │             │             │
+             ▼             ▼             ▼
+          Profile      Trip History    Plan Trip
+```
+
+---
+
+# User-Specific Experience
+
+After authentication, the user can access:
+
+```text
+Home
+  ↓
+Plan Trip
+  ↓
+Generate AI Itinerary
+  ↓
+Trip History
+  ↓
+Trip Detail
+  ↓
+Profile
+```
+
+The profile page provides a centralized view of the user's account.
+
+---
+
+# Frontend Components
+
+Important reusable components include:
+
+```text
+frontend/components/
+```
+
+## AuthNav.tsx
+
+Responsible for:
+
+- Detecting login status
+- Showing Login/Register when logged out
+- Showing Logout/Profile when logged in
+- Synchronizing authentication changes
+- Handling logout
+
+## LogoutButton.tsx
+
+Reusable logout UI component.
+
+## TripCard.tsx
+
+Displays saved trip information.
+
+## TripHistoryClient.tsx
+
+Handles:
+
+- Search
+- Sorting
+- Pagination
+- Trip history interaction
+
+---
+
+# Services
+
+Frontend API services are organized in:
+
+```text
+frontend/services/
+```
+
+## authService.ts
+
+Handles authentication-related API communication.
+
+Main responsibility:
+
+```text
+Get Current User
+```
+
+## tripService.ts
+
+Handles trip-related API communication.
+
+---
+
+# Complete Frontend Routes
+
+KelanaAI currently provides:
+
+```text
+/                → Home / Plan Trip
+
+/login           → Login
+
+/register        → Register
+
+/profile         → User Profile
+
+/trips           → Trip History
+
+/trips/{id}      → Trip Detail
+```
+
+---
+
+# Current API Overview
+
+The major API endpoints are:
+
+```text
+GET    /
+GET    /health
+
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+GET    /api/v1/auth/me
+
+POST   /api/v1/trips
+GET    /api/v1/trips
+GET    /api/v1/trips/{id}
+PUT    /api/v1/trips/{id}
+DELETE /api/v1/trips/{id}
+
+POST   /api/v1/trips/{id}/generate
+
+GET    /api/v1/trip-categories
+GET    /api/v1/recommendations
+GET    /api/v1/transportations
+```
 
 ---
 
@@ -1510,7 +2083,6 @@ Make sure the backend `.env` contains the required configuration:
 
 ```env
 DATABASE_URL=your_database_url
-
 AWS_BEARER_TOKEN_BEDROCK=your_bedrock_token
 AWS_REGION=ap-southeast-2
 MODEL_ID=amazon.nova-lite-v1:0
@@ -1580,9 +2152,7 @@ http://localhost:3000
 
 # Development Workflow
 
-Run both servers:
-
-### Terminal 1 — Backend
+## Terminal 1 — Backend
 
 ```powershell
 cd backend
@@ -1590,7 +2160,7 @@ cd backend
 uvicorn main:app --reload
 ```
 
-### Terminal 2 — Frontend
+## Terminal 2 — Frontend
 
 ```powershell
 cd frontend
@@ -1603,10 +2173,34 @@ Then open:
 http://localhost:3000
 ```
 
-Trip History Dashboard:
+Trip History:
 
 ```text
 http://localhost:3000/trips
+```
+
+Profile:
+
+```text
+http://localhost:3000/profile
+```
+
+Login:
+
+```text
+http://localhost:3000/login
+```
+
+Register:
+
+```text
+http://localhost:3000/register
+```
+
+Swagger:
+
+```text
+http://localhost:8000/docs
 ```
 
 ---
@@ -1684,10 +2278,14 @@ git tag session-7
 git push origin session-7
 ```
 
-The final Session 7 commit is:
+## Session 8
 
-```text
-4baf5e9
+```bash
+git add .
+git commit -m "Add authentication profile and personalized navigation"
+git push
+git tag session-8
+git push origin session-8
 ```
 
 ---
@@ -1704,6 +2302,7 @@ session-4
 session-5
 session-6
 session-7
+session-8
 ```
 
 ---
@@ -1717,13 +2316,21 @@ session-7
 - Session 3 — Completed
 - Session 4 — Completed
 - Session 5 — Completed
+- Session 8 Authentication Backend — Completed
 
 ## Frontend
 
 - Session 6 — Completed
 - Session 7 — Completed
+- Session 8 Authentication & Profile — Completed
+
+---
+
+# Current Features
 
 KelanaAI currently provides:
+
+## Travel Planning
 
 - Travel information management
 - Budget calculation
@@ -1732,7 +2339,12 @@ KelanaAI currently provides:
 - Travel season detection
 - Transportation recommendations
 - Destination recommendations
+- AI-powered itinerary generation
+
+## Backend
+
 - REST API
+- FastAPI
 - PostgreSQL persistence
 - SQLAlchemy ORM
 - Trip CRUD operations
@@ -1740,13 +2352,22 @@ KelanaAI currently provides:
 - Interactive Swagger documentation
 - Amazon Bedrock integration
 - Amazon Nova Lite integration
+- AI recommendation persistence
+
+## AI
+
+- Amazon Bedrock
+- Amazon Nova Lite
 - AI-powered travel itinerary generation
 - Rich AI prompt engineering
 - Structured daily travel plans
 - Markdown-formatted AI responses
 - AI recommendation persistence in PostgreSQL
-- Next.js frontend
-- React UI
+
+## Frontend
+
+- Next.js
+- React
 - TypeScript
 - Tailwind CSS
 - Responsive travel planning interface
@@ -1757,6 +2378,9 @@ KelanaAI currently provides:
 - Three.js travel visualization
 - Frontend-to-backend API integration
 - Frontend environment configuration
+
+## Trip History
+
 - Trip History Dashboard
 - Trip Detail pages
 - Saved trip browsing
@@ -1773,16 +2397,31 @@ KelanaAI currently provides:
 - General travel tips
 - Trip summary information
 
+## Authentication
+
+- User registration
+- User login
+- JWT authentication
+- bcrypt password hashing
+- Current user endpoint
+- Protected profile page
+- User profile information
+- Personalized navbar
+- Login/Register navigation
+- Logout functionality
+- Authentication state synchronization
+- Personalized welcome message
+
 ---
 
-# Session 7 Achievement
+# Session 8 Achievement
 
-Before Session 7:
+Before Session 8, KelanaAI primarily provided travel planning and trip history.
 
 ```text
 User
   ↓
-Next.js Web Interface
+Next.js
   ↓
 FastAPI
   ↓
@@ -1790,79 +2429,64 @@ Amazon Bedrock
   ↓
 PostgreSQL
   ↓
-AI Itinerary
-  ↓
-Next.js
-  ↓
-User
+Trip History
 ```
 
-After Session 7:
+After Session 8, the application provides a personalized authenticated experience:
 
 ```text
-                         ┌──────────────────────┐
-                         │     PostgreSQL       │
-                         │    Saved Trips       │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │       FastAPI        │
-                         │       REST API       │
-                         └──────────┬───────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │       Next.js        │
-                         │                      │
-                         │  Trip History        │
-                         │  Dashboard           │
-                         └──────────┬───────────┘
-                                    │
-                     ┌──────────────┴──────────────┐
-                     │                             │
-                     ▼                             ▼
-             ┌───────────────┐            ┌────────────────┐
-             │   Trip Cards  │            │  Trip Detail   │
-             │               │            │                │
-             │ Search        │            │ Day Itinerary  │
-             │ Sorting       │            │ General Tips   │
-             │ Pagination    │            │ Trip Summary   │
-             └───────────────┘            └────────────────┘
+                    ┌───────────────┐
+                    │     User      │
+                    └───────┬───────┘
+                            │
+                    ┌───────▼───────┐
+                    │ Authentication│
+                    │ Login/Register │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │     JWT       │
+                    └───────┬───────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │   Next.js     │
+                    │   Frontend    │
+                    └───────┬───────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
+       Profile          Plan Trip        Trip History
+          │                 │                 │
+          │                 ▼                 │
+          │          Amazon Bedrock           │
+          │                 │                 │
+          │                 ▼                 │
+          │            PostgreSQL ◄───────────┘
+          │
+          ▼
+     User Information
 ```
 
 KelanaAI is no longer only an AI travel planner.
 
-It now provides a persistent, multi-page travel planning experience where users can generate trips, save them in PostgreSQL, browse their trip history, search and sort saved itineraries, and open detailed structured travel plans.
+It now provides a personalized, authenticated, multi-page travel planning experience.
 
----
+Users can:
 
-# Future Development
-
-Future sessions can extend KelanaAI toward a more complete AI-powered travel planning platform.
-
-Potential improvements include:
-
-- User authentication
-- User registration and login
-- Edit saved trips from the frontend
-- Delete saved trips from the frontend
-- AI itinerary refinement
-- Regenerate specific days
-- More detailed destination information
-- External travel APIs
-- Real-time weather information
-- Hotel integrations
-- Flight integrations
-- Maps integration
-- Interactive destination maps
-- Improved database relationships
-- Production deployment
-- Cloud infrastructure
-- Frontend deployment
-- Backend deployment
-- CI/CD pipeline
-- Monitoring and logging
+1. Create an account.
+2. Login securely.
+3. Receive a JWT access token.
+4. Plan AI-powered trips.
+5. Save generated trips.
+6. Browse their trip history.
+7. Open detailed itineraries.
+8. View their personal profile.
+9. See their total generated trips.
+10. Logout securely.
+11. Receive a personalized welcome message.
 
 ---
 
@@ -1908,6 +2532,191 @@ Pagination
 Structured AI Itinerary
         ↓
 Multi-page Travel Application
+        ↓
+User Authentication
+        ↓
+JWT
+        ↓
+Password Hashing
+        ↓
+User Profile
+        ↓
+Personalized Navigation
 ```
 
-The project demonstrates how a simple Python application can progressively evolve into a full-stack AI-powered product with persistent data, AI-generated travel recommendations, and a modern multi-page frontend.
+The project demonstrates how a simple Python application can progressively evolve into a full-stack AI-powered product with:
+
+- Persistent data
+- AI-generated travel recommendations
+- Modern frontend
+- REST API
+- PostgreSQL
+- User authentication
+- JWT authorization
+- Personalized user experience
+- Multi-page travel application
+
+---
+
+# Future Development
+
+Future sessions can extend KelanaAI toward a more complete AI-powered travel planning platform.
+
+Potential improvements include:
+
+- User-specific trip ownership and authorization
+- Edit saved trips from the frontend
+- Delete saved trips from the frontend
+- AI itinerary refinement
+- Regenerate specific days
+- Regenerate complete itineraries
+- More detailed destination information
+- External travel APIs
+- Real-time weather information
+- Hotel integrations
+- Flight integrations
+- Maps integration
+- Interactive destination maps
+- Improved database relationships
+- User settings
+- Password change
+- Forgot password functionality
+- Refresh token mechanism
+- Production-ready authentication
+- Production deployment
+- Cloud infrastructure
+- Frontend deployment
+- Backend deployment
+- CI/CD pipeline
+- Monitoring and logging
+- Automated testing
+- Unit testing
+- Integration testing
+- End-to-end testing
+
+---
+
+# Security Considerations
+
+KelanaAI currently uses JWT-based authentication and bcrypt password hashing.
+
+Important security practices include:
+
+- Passwords are hashed before being stored.
+- Plain-text passwords should never be stored.
+- JWT tokens should not be committed to Git.
+- AWS credentials must remain in environment variables.
+- Database credentials must remain in environment variables.
+- `.env` should not be committed.
+- `.env.local` should not be committed.
+- Production authentication should use secure token storage and HTTPS.
+- Production deployments should use properly managed secrets.
+
+---
+
+# Environment Files
+
+Backend:
+
+```text
+backend/.env
+```
+
+Example:
+
+```env
+DATABASE_URL=your_database_url
+AWS_BEARER_TOKEN_BEDROCK=your_bedrock_token
+AWS_REGION=ap-southeast-2
+MODEL_ID=amazon.nova-lite-v1:0
+```
+
+Frontend:
+
+```text
+frontend/.env.local
+```
+
+Example:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Environment files should remain local and should not be committed to Git.
+
+---
+
+# Project Summary
+
+KelanaAI started as a simple Python console application for calculating travel information.
+
+It progressively evolved through:
+
+```text
+Python
+   ↓
+Business Logic
+   ↓
+FastAPI
+   ↓
+PostgreSQL
+   ↓
+SQLAlchemy
+   ↓
+Amazon Bedrock
+   ↓
+AI Travel Planner
+   ↓
+Next.js
+   ↓
+React + TypeScript
+   ↓
+Modern UI
+   ↓
+Trip History
+   ↓
+Structured AI Itinerary
+   ↓
+Authentication
+   ↓
+JWT
+   ↓
+User Profile
+   ↓
+Personalized Travel Platform
+```
+
+KelanaAI demonstrates the development of a complete full-stack AI application from the ground up.
+
+The project combines software engineering fundamentals, REST API development, database persistence, generative AI, frontend development, authentication, and user experience design into a single travel planning platform.
+
+---
+
+# Conclusion
+
+KelanaAI has evolved from a simple Python learning project into a full-stack AI-powered travel planning application.
+
+The current application provides:
+
+```text
+                 ┌─────────────────────┐
+                 │      KelanaAI       │
+                 │ AI Travel Planner    │
+                 └──────────┬──────────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+          ▼                 ▼                 ▼
+    Authentication      AI Planning       Trip History
+          │                 │                 │
+          ▼                 ▼                 ▼
+         JWT          Amazon Bedrock     PostgreSQL
+          │                 │                 │
+          └─────────────────┼─────────────────┘
+                            │
+                            ▼
+                     User Profile
+```
+
+The project demonstrates how a simple Python application can progressively evolve into a modern full-stack AI product with persistent data, generative AI, authentication, personalized user experiences, and a polished multi-page web interface.
