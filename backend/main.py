@@ -51,7 +51,11 @@ def get_current_user(
         db = SessionLocal()
 
         try:
-            user = db.query(User).filter(User.id == int(user_id)).first()
+            user = (
+                db.query(User)
+                .filter(User.id == int(user_id))
+                .first()
+            )
 
             if user is None:
                 raise HTTPException(
@@ -74,7 +78,6 @@ def get_current_user(
 # ============================================================
 # REQUEST MODELS
 # ============================================================
-
 
 class TripRequest(BaseModel):
     destination: str
@@ -125,7 +128,6 @@ init_db()
 # ROOT
 # ============================================================
 
-
 @app.get("/")
 def home():
     return {"message": "Welcome to KelanaAI"}
@@ -135,7 +137,6 @@ def home():
 # HEALTH
 # ============================================================
 
-
 @app.get("/health")
 def health():
     return {"status": "OK"}
@@ -144,7 +145,6 @@ def health():
 # ============================================================
 # REGISTER USER
 # ============================================================
-
 
 @app.post("/api/v1/auth/register")
 def register_user(request: RegisterRequest):
@@ -179,7 +179,6 @@ def register_user(request: RegisterRequest):
 # ============================================================
 # LOGIN USER
 # ============================================================
-
 
 @app.post("/api/v1/auth/login")
 def login_user(request: LoginRequest):
@@ -225,7 +224,6 @@ def get_me(
 # CREATE TRIP
 # ============================================================
 
-
 @app.post("/api/v1/trips")
 def create_trip(
     request: TripRequest,
@@ -241,10 +239,12 @@ def create_trip(
         request.days,
     )
 
-    category = get_trip_category(request.budget)
+    category = get_trip_category(
+        request.budget
+    )
 
-    recommendation_transport = get_transportation_recommendation(
-        category
+    recommendation_transport = (
+        get_transportation_recommendation(category)
     )
 
     # --------------------------------------------------------
@@ -313,7 +313,6 @@ def create_trip(
 # TRIP CATEGORIES
 # ============================================================
 
-
 @app.get("/api/v1/trip-categories")
 def get_trip_categories():
     return [
@@ -326,7 +325,6 @@ def get_trip_categories():
 # ============================================================
 # DESTINATION RECOMMENDATIONS
 # ============================================================
-
 
 @app.get("/api/v1/recommendations")
 def get_recommendations():
@@ -341,7 +339,6 @@ def get_recommendations():
 # TRANSPORTATION RECOMMENDATIONS
 # ============================================================
 
-
 @app.get("/api/v1/transportations")
 def get_transportations():
     return [
@@ -352,9 +349,8 @@ def get_transportations():
 
 
 # ============================================================
-# GET ALL TRIPS
+# GET ALL TRIPS - ONLY CURRENT USER
 # ============================================================
-
 
 @app.get("/api/v1/trips")
 def list_trips(
@@ -377,12 +373,14 @@ def list_trips(
 
 
 # ============================================================
-# GET ONE TRIP
+# GET ONE TRIP - ONLY OWNER
 # ============================================================
 
-
 @app.get("/api/v1/trips/{trip_id}")
-def get_trip(trip_id: int):
+def get_trip(
+    trip_id: int,
+    user: User = Depends(get_current_user),
+):
 
     db = SessionLocal()
 
@@ -398,6 +396,16 @@ def get_trip(trip_id: int):
             raise HTTPException(
                 status_code=404,
                 detail=f"Trip with id {trip_id} not found",
+            )
+
+        # ----------------------------------------------------
+        # OWNERSHIP CHECK
+        # ----------------------------------------------------
+
+        if trip.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to access this trip",
             )
 
         return {
@@ -416,12 +424,14 @@ def get_trip(trip_id: int):
 
 
 # ============================================================
-# DELETE TRIP
+# DELETE TRIP - ONLY OWNER
 # ============================================================
 
-
 @app.delete("/api/v1/trips/{trip_id}")
-def delete_trip(trip_id: int):
+def delete_trip(
+    trip_id: int,
+    user: User = Depends(get_current_user),
+):
 
     db = SessionLocal()
 
@@ -439,6 +449,16 @@ def delete_trip(trip_id: int):
                 detail=f"Trip with id {trip_id} not found",
             )
 
+        # ----------------------------------------------------
+        # OWNERSHIP CHECK
+        # ----------------------------------------------------
+
+        if trip.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to delete this trip",
+            )
+
         db.delete(trip)
         db.commit()
 
@@ -451,14 +471,14 @@ def delete_trip(trip_id: int):
 
 
 # ============================================================
-# UPDATE TRIP
+# UPDATE TRIP - ONLY OWNER
 # ============================================================
-
 
 @app.put("/api/v1/trips/{trip_id}")
 def update_trip(
     trip_id: int,
     request: TripRequest,
+    user: User = Depends(get_current_user),
 ):
 
     db = SessionLocal()
@@ -475,10 +495,20 @@ def update_trip(
             .first()
         )
 
-        if not trip:
+        if trip is None:
             raise HTTPException(
                 status_code=404,
                 detail=f"Trip with id {trip_id} not found",
+            )
+
+        # ----------------------------------------------------
+        # OWNERSHIP CHECK
+        # ----------------------------------------------------
+
+        if trip.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to update this trip",
             )
 
         # ----------------------------------------------------
@@ -537,13 +567,13 @@ def update_trip(
 
 
 # ============================================================
-# GENERATE AI RECOMMENDATION
+# GENERATE AI RECOMMENDATION - ONLY OWNER
 # ============================================================
-
 
 @app.post("/api/v1/trips/{trip_id}/generate")
 def generate_trip_recommendation(
     trip_id: int,
+    user: User = Depends(get_current_user),
 ):
 
     db = SessionLocal()
@@ -564,6 +594,16 @@ def generate_trip_recommendation(
             raise HTTPException(
                 status_code=404,
                 detail=f"Trip with id {trip_id} not found",
+            )
+
+        # ----------------------------------------------------
+        # OWNERSHIP CHECK
+        # ----------------------------------------------------
+
+        if trip.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to generate this trip",
             )
 
         # ----------------------------------------------------
