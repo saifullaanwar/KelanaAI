@@ -4,6 +4,7 @@ import {
   Compass,
   History,
   Sparkles,
+  Bot,
 } from "lucide-react";
 
 import AuthNav from "../components/AuthNav";
@@ -48,10 +49,9 @@ export default function RootLayout({
               </span>
             </Link>
 
-
             {/* =================================================
                 CENTER NAVIGATION
-                Plan Trip + Trip History
+                Plan Trip + Trip History + Assistant
             ================================================= */}
             <nav
               className="
@@ -64,6 +64,7 @@ export default function RootLayout({
                 md:flex
               "
             >
+              {/* Plan Trip */}
               <Link
                 href="/"
                 className="group inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
@@ -76,6 +77,7 @@ export default function RootLayout({
                 Plan Trip
               </Link>
 
+              {/* Trip History */}
               <Link
                 href="/trips"
                 className="group inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
@@ -87,8 +89,20 @@ export default function RootLayout({
 
                 Trip History
               </Link>
-            </nav>
 
+              {/* Assistant */}
+              <Link
+                href="/assistant"
+                className="group inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
+              >
+                <Bot
+                  size={15}
+                  className="text-cyan-400 transition group-hover:scale-110"
+                />
+
+                Assistant
+              </Link>
+            </nav>
 
             {/* =================================================
                 AUTH NAVIGATION — RIGHT
@@ -99,21 +113,19 @@ export default function RootLayout({
               <AuthNav />
             </div>
 
-
             {/* =================================================
-                MOBILE NAVIGATION
+                MOBILE AUTH NAVIGATION
             ================================================= */}
             <div className="ml-auto md:hidden">
               <AuthNav />
             </div>
           </div>
 
-
           {/* ===================================================
               MOBILE NAVIGATION
               =================================================== */}
           <div className="border-t border-slate-800/40 md:hidden">
-            <nav className="mx-auto grid max-w-7xl grid-cols-2 gap-2 px-4 py-2">
+            <nav className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-2">
 
               {/* Plan Trip */}
               <Link
@@ -141,10 +153,22 @@ export default function RootLayout({
                 Trip History
               </Link>
 
+              {/* Assistant */}
+              <Link
+                href="/assistant"
+                className="flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
+              >
+                <Bot
+                  size={15}
+                  className="text-cyan-400"
+                />
+
+                Assistant
+              </Link>
+
             </nav>
           </div>
         </header>
-
 
         {/* =====================================================
             PAGE CONTENT

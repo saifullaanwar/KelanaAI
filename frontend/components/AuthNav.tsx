@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   LogIn,
   LogOut,
   User,
   UserPlus,
+  Sparkles,
 } from "lucide-react";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -41,13 +44,9 @@ export default function AuthNav() {
 
       try {
         const currentUser = await getCurrentUser();
-
         setUser(currentUser);
       } catch (error) {
-        console.error(
-          "Failed to load current user:",
-          error
-        );
+        console.error("Failed to load current user:", error);
 
         localStorage.removeItem("access_token");
         setUser(null);
@@ -92,10 +91,7 @@ export default function AuthNav() {
           setShowWelcome(false);
         }, 3000);
       } catch (error) {
-        console.error(
-          "Failed to load current user:",
-          error
-        );
+        console.error("Failed to load current user:", error);
 
         localStorage.removeItem("access_token");
         setUser(null);
@@ -103,26 +99,12 @@ export default function AuthNav() {
       }
     }
 
-    window.addEventListener(
-      "auth-changed",
-      handleAuthChanged
-    );
-
-    window.addEventListener(
-      "storage",
-      handleAuthChanged
-    );
+    window.addEventListener("auth-changed", handleAuthChanged);
+    window.addEventListener("storage", handleAuthChanged);
 
     return () => {
-      window.removeEventListener(
-        "auth-changed",
-        handleAuthChanged
-      );
-
-      window.removeEventListener(
-        "storage",
-        handleAuthChanged
-      );
+      window.removeEventListener("auth-changed", handleAuthChanged);
+      window.removeEventListener("storage", handleAuthChanged);
 
       if (welcomeTimerRef.current) {
         clearTimeout(welcomeTimerRef.current);
@@ -144,9 +126,7 @@ export default function AuthNav() {
     }
 
     // Beritahu component lain
-    window.dispatchEvent(
-      new Event("auth-changed")
-    );
+    window.dispatchEvent(new Event("auth-changed"));
 
     // Redirect ke login
     router.replace("/login");
@@ -174,9 +154,7 @@ export default function AuthNav() {
           <div className="fixed right-5 top-5 z-[100]">
             <div className="rounded-xl border border-cyan-400/20 bg-slate-900/95 px-5 py-3 shadow-2xl shadow-cyan-500/10 backdrop-blur-xl">
               <div className="flex items-center gap-3">
-                <span className="text-lg">
-                  👋
-                </span>
+                <span className="text-lg">👋</span>
 
                 <div>
                   <p className="text-sm font-semibold text-white">

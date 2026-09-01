@@ -71,6 +71,7 @@ KelanaAI has been developed progressively through multiple sessions:
 | Session 7 | Trip History Dashboard & Enhanced Trip Cards | Completed |
 
 | Session 8 | User Authentication, Profile, Personalized Navigation & Trip Ownership Authorization | Completed |
+| Session 9 | Knowledge Base Expansion & RAG vs Base-Model Comparison | Completed |
 
 The application has evolved from a simple command-line travel calculator into a full-stack AI travel planning platform with:
 
@@ -3274,6 +3275,8 @@ session-7
 
 session-8
 
+session-9
+
 ```
 
 ---
@@ -3293,6 +3296,7 @@ session-8
 - Session 5 — Completed
 
 - Session 8 Authentication & Trip Ownership Authorization — Completed
+- Session 9 Knowledge Base Expansion & RAG — Completed
 
 ## Frontend
 
@@ -3301,6 +3305,8 @@ session-8
 - Session 7 — Completed
 
 - Session 8 Authentication & Profile — Completed
+
+- Session 9 AI Travel Assistant — Completed
 
 ---
 
@@ -3363,6 +3369,18 @@ KelanaAI currently provides:
 - Markdown-formatted AI responses
 
 - AI recommendation persistence in PostgreSQL
+
+- Amazon Bedrock Knowledge Base
+
+- RAG (Retrieval-Augmented Generation)
+
+- Travel document retrieval
+
+- Grounded AI answers from curated documents
+
+- Source document references
+
+- Presigned S3 URL for source documents
 
 ## Frontend
 
@@ -3764,6 +3782,22 @@ Trip Ownership Authorization
 
 Protected CRUD Endpoints
 
+    ↓
+
+Knowledge Base (Amazon Bedrock)
+
+    ↓
+
+RAG (Retrieval-Augmented Generation)
+
+    ↓
+
+Travel Document Assistant
+
+    ↓
+
+Source Document Linking
+
 ```
 
 The project demonstrates how a simple Python application can progressively evolve into a full-stack AI-powered product with:
@@ -3785,6 +3819,277 @@ The project demonstrates how a simple Python application can progressively evolv
 - Personalized user experience
 
 - Multi-page travel application
+
+---
+
+# Session 9 — Knowledge Base Expansion & RAG
+
+Session 9 teaches KelanaAI to read and retrieve information from a curated collection of travel documents using Amazon Bedrock Knowledge Base and RAG (Retrieval-Augmented Generation).
+
+Instead of generating answers purely from the base model's training data, KelanaAI now retrieves relevant passages from uploaded travel documents and uses them as grounded context when generating answers.
+
+## New Feature — AI Travel Assistant
+
+KelanaAI now provides a dedicated Travel Assistant page at:
+
+```text
+
+/assistant
+
+```
+
+Users can ask travel-related questions and receive answers grounded in real travel documents stored in the Knowledge Base.
+
+## New API Endpoint
+
+```text
+
+POST /api/v1/assistant
+
+```
+
+The endpoint:
+
+1. Receives the user's question.
+2. Sends it to Amazon Bedrock Knowledge Base for retrieval.
+3. Gets the most relevant document passages.
+4. Sends the retrieved context to Amazon Nova.
+5. Returns the grounded answer and source document references.
+
+Example request:
+
+```json
+
+{
+  "question": "What are the visa requirements for visiting Japan?"
+}
+
+```
+
+Example response:
+
+```json
+
+{
+  "question": "What are the visa requirements for visiting Japan?",
+  "answer": "The visa requirements for visiting Japan include...",
+  "sources": [
+    {
+      "name": "single-entry-short-term-visa-japan.pdf",
+      "url": "https://..."
+    }
+  ]
+}
+
+```
+
+## Knowledge Base Documents
+
+The Knowledge Base contains travel documents covering multiple destinations:
+
+| Document | Topic |
+|---|---|
+| single-entry-short-term-visa-japan.pdf | Japan visa requirements |
+| Japan-Packing-List.pdf | Japan packing guide |
+| japan-halal-dining-guide.md | Halal food in Japan |
+| Tokyo_Travel_Guide_EN.md | Tokyo travel guide |
+| Tokyo-Guide-Book.pdf | Tokyo guide book |
+| Kyoto_Travel_Guide_EN.md | Kyoto travel guide |
+| Osaka_Travel_Guide_EN.md | Osaka travel guide |
+| Kazakhstan.pdf | Kazakhstan destinations |
+| original-Koryo_Tours_North_Korea_Guide_2019.pdf | North Korea tourism guide |
+| indonesia-customs-and-imei-guide.md | Indonesian customs regulations |
+| indonesian-traveler-payment-guide.md | Payment guide for Indonesian travelers |
+
+## RAG vs Base-Model Comparison
+
+The following questions were tested to compare RAG-grounded answers against a base model:
+
+### Question 1 — Osaka Attractions
+
+**Question:** What are the top attractions to visit in Osaka?
+
+**RAG Answer (KelanaAI):**
+The top attractions to visit in Osaka are:
+1. Dotonbori & Shinsaibashi-suji
+2. Universal Studios Japan (USJ)
+3. Osaka Castle (Osakajo)
+4. Shinsekai & Tsutenkaku Tower
+5. Osaka Aquarium Kaiyukan
+6. Umeda Sky Building (Kuchu Teien Observatory)
+
+**Source:** Osaka_Travel_Guide_EN.md
+
+**Base Model Answer:** A generic list without specific local area names or context from curated travel documents.
+
+**Difference:** RAG answer is grounded in the actual travel guide document and includes specific local landmarks with correct Japanese names.
+
+---
+
+### Question 2 — Kazakhstan Cities
+
+**Question:** What are the main cities and tourist destinations in Kazakhstan?
+
+**RAG Answer (KelanaAI):**
+The main cities and tourist destinations in Kazakhstan are:
+- Nur-Sultan (Astana)
+- Akmol
+- Kurchatov
+- Semey
+- Ust-Kamenogorsk
+- Karaganda
+- Shahtinsk
+- Almaty
+
+These cities are marked with red squares on the map and are connected by travel routes.
+
+**Source:** Kazakhstan.pdf
+
+**Base Model Answer:** Lists only major cities like Almaty and Nur-Sultan without referencing specific map details or travel route information.
+
+**Difference:** RAG answer includes details specific to the uploaded document, including map marker references.
+
+---
+
+### Question 3 — North Korea Tourism
+
+**Question:** Is it possible for tourists to visit North Korea, and what are the restrictions?
+
+**RAG Answer (KelanaAI):**
+Yes, it is possible for tourists to visit North Korea, but there are restrictions. Written materials, printed and electronic, about North Korea are prohibited from entry into the country. Additionally, other prohibited items include religious materials, media about Korea or in the Korean language, illicit drugs, and pornography.
+
+**Source:** original-Koryo_Tours_North_Korea_Guide_2019.pdf
+
+**Base Model Answer:** General information without specific prohibited items list from an actual tour operator guide.
+
+**Difference:** RAG answer cites specific prohibited item categories directly from the Koryo Tours guide document.
+
+---
+
+### Question 4 — Indonesian Traveler Payment
+
+**Question:** What payment methods are commonly accepted for Indonesian travelers abroad?
+
+**RAG Answer (KelanaAI):**
+Indonesian travelers abroad can use Cross-Border QRIS, international debit and multi-currency cards, and physical cash if QRIS is not available.
+
+**Sources:** indonesian-traveler-payment-guide.md, indonesia-customs-and-imei-guide.md
+
+**Base Model Answer:** Generic answer about international payment methods without specific Indonesian payment systems like QRIS.
+
+**Difference:** RAG answer specifically mentions Cross-Border QRIS, which is a uniquely Indonesian payment system — information only available in the uploaded document.
+
+---
+
+### Question 5 — Tokyo Highlights
+
+**Question:** What are the best things to do and see in Tokyo?
+
+**RAG Answer (KelanaAI):**
+1. Shibuya Crossing & Shibuya Sky — world's busiest pedestrian intersection with 360-degree rooftop view
+2. Senso-ji Temple (Asakusa) — Tokyo's oldest Buddhist temple via Nakamise shopping street
+3. Meiji Shrine & Harajuku — serene forested shrine next to Harajuku's eccentric fashion hub
+4. Akihabara — global epicenter of anime, manga, electronics, and otaku culture
+5. teamLab Planets TOKYO — immersive digital art museum
+6. Tokyo Skytree / Tokyo Tower — panoramic views stretching to Mount Fuji on a clear day
+
+**Sources:** Tokyo_Travel_Guide_EN.md, Tokyo-Guide-Book.pdf
+
+**Base Model Answer:** General Tokyo overview without structured highlights tied to specific guide books.
+
+**Difference:** RAG answer draws from two source documents simultaneously and provides richer descriptions grounded in curated travel content.
+
+---
+
+## New Backend Service
+
+The Knowledge Base service is implemented in:
+
+```text
+
+backend/services/kb_service.py
+
+```
+
+The service handles:
+
+- Querying Amazon Bedrock Knowledge Base
+- Retrieving relevant document passages
+- Generating presigned S3 URLs for source documents
+- Sending retrieved context to Amazon Nova
+- Returning grounded answers with source references
+
+## Architecture with Knowledge Base
+
+```text
+
+User Question
+
+      ↓
+
+FastAPI /api/v1/assistant
+
+      ↓
+
+Amazon Bedrock Knowledge Base
+
+      ↓
+
+Retrieve Relevant Passages
+
+      ↓
+
+Amazon Nova (with context)
+
+      ↓
+
+Grounded Answer + Sources
+
+      ↓
+
+Next.js Assistant Page
+
+```
+
+## Frontend Assistant Page
+
+The assistant page is located at:
+
+```text
+
+frontend/app/assistant/page.tsx
+
+```
+
+The page provides:
+
+- Question input form
+- AI answer display
+- Source document list with clickable links
+- Loading state
+- Error handling
+
+## New Frontend Service
+
+```text
+
+frontend/services/assistantService.ts
+
+```
+
+Handles API communication with the `/api/v1/assistant` endpoint.
+
+## Session 9 Git Tag
+
+```bash
+
+git add .
+git commit -m "Expand Knowledge Base and compare RAG vs base-model answers"
+git push
+git tag session-9
+git push origin session-9
+
+```
 
 ---
 

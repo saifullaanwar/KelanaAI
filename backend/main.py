@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from jose import jwt, JWTError
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from models.user import User
 
 from services.trip_service import (
@@ -13,10 +14,15 @@ from services.trip_service import (
 
 from services.bedrock_service import get_ai_recommendation
 from services.auth_service import register, login
+from services.kb_service import ask_knowledge_base
 
 from database import SessionLocal, init_db
 from models.trip import Trip
 
+
+# ============================================================
+# JWT CONFIGURATION
+# ============================================================
 
 SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
@@ -97,6 +103,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class QuestionRequest(BaseModel):
+    question: str
+
+
 # ============================================================
 # APP
 # ============================================================
@@ -110,7 +120,9 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -130,7 +142,9 @@ init_db()
 
 @app.get("/")
 def home():
-    return {"message": "Welcome to KelanaAI"}
+    return {
+        "message": "Welcome to KelanaAI"
+    }
 
 
 # ============================================================
@@ -139,7 +153,9 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "OK"}
+    return {
+        "status": "OK"
+    }
 
 
 # ============================================================
@@ -147,8 +163,9 @@ def health():
 # ============================================================
 
 @app.post("/api/v1/auth/register")
-def register_user(request: RegisterRequest):
-
+def register_user(
+    request: RegisterRequest,
+):
     db = SessionLocal()
 
     try:
@@ -181,8 +198,9 @@ def register_user(request: RegisterRequest):
 # ============================================================
 
 @app.post("/api/v1/auth/login")
-def login_user(request: LoginRequest):
-
+def login_user(
+    request: LoginRequest,
+):
     db = SessionLocal()
 
     try:
@@ -385,7 +403,6 @@ def get_trip(
     db = SessionLocal()
 
     try:
-
         trip = (
             db.query(Trip)
             .filter(Trip.id == trip_id)
@@ -436,7 +453,6 @@ def delete_trip(
     db = SessionLocal()
 
     try:
-
         trip = (
             db.query(Trip)
             .filter(Trip.id == trip_id)
@@ -609,9 +625,6 @@ def generate_trip_recommendation(
         # ----------------------------------------------------
         # Generate AI recommendation
         # ----------------------------------------------------
-        # IMPORTANT:
-        # Use travel_style, NOT category.
-        # ----------------------------------------------------
 
         ai_recommendation = get_ai_recommendation(
             destination=trip.destination,
@@ -642,3 +655,55 @@ def generate_trip_recommendation(
 
     finally:
         db.close()
+
+
+# ============================================================
+# KNOWLEDGE BASE ASSISTANT
+# ============================================================
+
+@app.post("/api/v1/assistant")
+def ask_assistant(
+    request: QuestionRequest,
+    user: User = Depends(get_current_user),
+):
+
+    # --------------------------------------------------------
+    # Send question to Knowledge Base
+    # --------------------------------------------------------
+
+    result = ask_knowledge_base(
+        request.question
+    )
+
+    # --------------------------------------------------------
+    # DEBUG: Log sources sebelum dikirim ke client
+    # --------------------------------------------------------
+
+    sources = result.get("sources", [])
+
+    print(f"[MAIN] /api/v1/assistant — jumlah sources: {len(sources)}")
+
+    for i, src in enumerate(sources):
+        has_url = bool(src.get("url"))
+        url_preview = src.get("url", "")[:80] if has_url else "None"
+        print(
+            f"[MAIN] Source[{i}] "
+            f"name={src.get('name')!r} "
+            f"url_ada={has_url} "
+            f"url_preview={url_preview!r}"
+        )
+
+    response_body = {
+        "question": request.question,
+        "answer": result.get("answer", ""),
+        "sources": sources,
+    }
+
+    print(f"[MAIN] Response body keys: {list(response_body.keys())}")
+    print(f"[MAIN] sources dalam response: {response_body['sources']}")
+
+    # --------------------------------------------------------
+    # Return grounded answer + sources
+    # --------------------------------------------------------
+
+    return response_body
