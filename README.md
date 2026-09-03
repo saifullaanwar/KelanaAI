@@ -72,6 +72,7 @@ KelanaAI has been developed progressively through multiple sessions:
 
 | Session 8 | User Authentication, Profile, Personalized Navigation & Trip Ownership Authorization | Completed |
 | Session 9 | Knowledge Base Expansion & RAG vs Base-Model Comparison | Completed |
+| Session 10 | Conversational Memory & Chat Interface | Completed |
 
 The application has evolved from a simple command-line travel calculator into a full-stack AI travel planning platform with:
 
@@ -3277,6 +3278,8 @@ session-8
 
 session-9
 
+session-10
+
 ```
 
 ---
@@ -3297,6 +3300,7 @@ session-9
 
 - Session 8 Authentication & Trip Ownership Authorization — Completed
 - Session 9 Knowledge Base Expansion & RAG — Completed
+- Session 10 Conversational Memory & Chat Interface — Completed
 
 ## Frontend
 
@@ -3307,6 +3311,8 @@ session-9
 - Session 8 Authentication & Profile — Completed
 
 - Session 9 AI Travel Assistant — Completed
+
+- Session 10 Chat Interface — Completed
 
 ---
 
@@ -3381,6 +3387,12 @@ KelanaAI currently provides:
 - Source document references
 
 - Presigned S3 URL for source documents
+
+- Conversational memory via message history
+
+- Multi-turn chat with Amazon Bedrock
+
+- User name personalization via system prompt
 
 ## Frontend
 
@@ -3798,6 +3810,22 @@ Travel Document Assistant
 
 Source Document Linking
 
+    ↓
+
+Conversational Memory
+
+    ↓
+
+Multi-turn Chat Interface
+
+    ↓
+
+Rename Conversations
+
+    ↓
+
+Message Timestamps
+
 ```
 
 The project demonstrates how a simple Python application can progressively evolve into a full-stack AI-powered product with:
@@ -4088,6 +4116,152 @@ git commit -m "Expand Knowledge Base and compare RAG vs base-model answers"
 git push
 git tag session-9
 git push origin session-9
+
+```
+
+---
+
+# Session 10 — Conversational Memory & Chat Interface
+
+Session 10 teaches KelanaAI to remember conversations across multiple turns.
+
+LLMs are stateless by nature — they have no memory between requests. KelanaAI solves this by storing the full message history in PostgreSQL and reconstructing the conversation context before every request to Amazon Bedrock.
+
+## New Feature — /chat
+
+KelanaAI now provides a dedicated multi-turn chat page at:
+
+```text
+
+/chat
+
+```
+
+Users can have extended conversations with KelanaAI where the AI remembers everything said earlier in the same conversation.
+
+## New Database Tables
+
+```text
+
+conversations
+
+  - id
+
+  - user_id
+
+  - title (nullable)
+
+  - created_at
+
+messages
+
+  - id
+
+  - conversation_id
+
+  - role (user | assistant)
+
+  - content
+
+  - created_at
+
+```
+
+## New API Endpoints
+
+```text
+
+POST   /api/v1/conversations
+
+GET    /api/v1/conversations
+
+POST   /api/v1/conversations/{id}/messages
+
+GET    /api/v1/conversations/{id}/messages
+
+PATCH  /api/v1/conversations/{id}
+
+```
+
+## Conversational Memory Flow
+
+```text
+
+User sends message
+
+        ↓
+
+Save user message to PostgreSQL
+
+        ↓
+
+Load ALL previous messages from conversation
+
+        ↓
+
+Build full message history for Bedrock
+
+        ↓
+
+Inject user name via system prompt
+
+        ↓
+
+Amazon Bedrock (Nova Lite)
+
+        ↓
+
+Save AI response to PostgreSQL
+
+        ↓
+
+Return AI response to frontend
+
+```
+
+Because the full history is included on every request, the AI can answer follow-up questions that depend on earlier context:
+
+```text
+
+Turn 1: "Plan a family trip to Japan."
+
+Turn 2: "What should we do on Day 2?"
+
+→ AI correctly references Day 2 from Turn 1
+
+```
+
+## Chat UX Features
+
+- Conversation sidebar with list of all conversations
+- New Conversation button
+- Smart init — loads existing conversations on page open instead of always creating new ones
+- Rename conversations (PATCH endpoint + inline edit UI)
+- Conversation title displayed in chat header
+- Auto-scroll to latest message when conversation is loaded (instant) and when new message is sent (smooth)
+- Typing indicator — animated dots + "KelanaAI is typing..." text
+- Timestamp displayed below each message bubble
+- User name personalization — AI addresses user by their real name
+
+## New Frontend Files
+
+```text
+
+frontend/app/chat/page.tsx
+
+frontend/services/conversationService.ts
+
+```
+
+## Session 10 Git Tag
+
+```bash
+
+git add .
+git commit -m "Add conversational memory and improve chat experience"
+git push
+git tag session-10
+git push origin session-10
 
 ```
 

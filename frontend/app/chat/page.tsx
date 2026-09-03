@@ -39,6 +39,8 @@ type Message = {
   id: number;
   role: "user" | "assistant";
   content: string;
+  // Timestamp shown below each bubble
+  timestamp: string;
 };
 
 
@@ -62,11 +64,24 @@ function conversationLabel(conv: Conversation): string {
   return conv.title ?? `Conversation #${conv.id}`;
 }
 
+/** Format ISO timestamp → "HH:MM" in local time */
+function formatTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
 function toMessage(m: ConversationMessage, idx: number): Message {
   return {
     id: m.id ?? idx,
     role: m.role,
     content: m.content,
+    timestamp: m.created_at ? formatTime(m.created_at) : "",
   };
 }
 
@@ -139,6 +154,7 @@ export default function ChatPage() {
 
   const bottomRef   = useRef<HTMLDivElement>(null);
   const inputRef    = useRef<HTMLInputElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const uiIdCounter = useRef(-1);
   function nextUiId() {
     uiIdCounter.current -= 1;
@@ -193,6 +209,9 @@ export default function ChatPage() {
 
   // =========================================================
   // AUTO SCROLL
+  // Smooth scroll when a new message is added (send flow).
+  // Instant scroll when a conversation is loaded (select flow)
+  // — handled inside selectConversation after setMessages.
   // =========================================================
 
   useEffect(() => {
@@ -218,6 +237,12 @@ export default function ChatPage() {
     try {
       const loaded = await getMessages(id);
       setMessages(loaded.map(toMessage));
+      // Instant jump to bottom so user sees latest message first
+      setTimeout(() => {
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+        }
+      }, 0);
     } catch (err) {
       setSendError(
         err instanceof Error ? err.message : "Failed to load messages."
@@ -344,6 +369,7 @@ export default function ChatPage() {
       id: nextUiId(),
       role: "user",
       content: text,
+      timestamp: formatTime(new Date().toISOString()),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -356,6 +382,7 @@ export default function ChatPage() {
         id: result.message_id,
         role: "assistant",
         content: result.content,
+        timestamp: formatTime(new Date().toISOString()),
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
@@ -625,32 +652,36 @@ export default function ChatPage() {
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-sm font-semibold text-white">
-                KelanaAI Chat
-              </h1>
-              <span className="hidden text-xs text-slate-600 sm:inline">
-                ·
-              </span>
-              <span className="hidden text-xs text-slate-500 sm:inline">
-                Memory powered by Amazon Bedrock
-              </span>
-            </div>
+            {/* Conversation title — primary label */}
+            <h1 className="truncate text-sm font-semibold text-white">
+              {activeId !== null
+                ? conversationLabel(
+                    conversations.find((c) => c.id === activeId) ?? {
+                      id: activeId,
+                      title: null,
+                      created_at: "",
+                    }
+                  )
+                : "KelanaAI Chat"}
+            </h1>
 
-            {activeId !== null && (
-              <p className="text-[11px] text-slate-600">
-                {/* Show custom title if set, otherwise fall back to ID */}
-                {conversations.find((c) => c.id === activeId)?.title
-                  ? conversations.find((c) => c.id === activeId)!.title
-                  : `Conversation #${activeId}`}
-              </p>
-            )}
+            <p className="text-[11px] text-slate-500">
+              Memory powered by Amazon Bedrock
+            </p>
           </div>
 
           {/* Status dot */}
           <div className="flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-            <span className="text-xs text-slate-600">Online</span>
+            <span
+              className={`h-1.5 w-1.5 rounded-full shadow-sm ${
+                sending
+                  ? "animate-pulse bg-amber-400 shadow-amber-400/50"
+                  : "bg-emerald-400 shadow-emerald-400/50"
+              }`}
+            />
+            <span className="text-xs text-slate-600">
+              {sending ? "Typing..." : "Online"}
+            </span>
           </div>
 
         </div>
@@ -660,7 +691,7 @@ export default function ChatPage() {
             MESSAGE LIST
         --------------------------------------------------- */}
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div ref={scrollAreaRef} className="flex-1 overflow-y-auto custom-scrollbar">
 
           <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
 
@@ -748,26 +779,39 @@ export default function ChatPage() {
                       </div>
                     )}
 
-                    {/* Bubble */}
+                    {/* Bubble + timestamp */}
                     <div
-                      className={`
-                        max-w-[78%] rounded-2xl px-4 py-3
-                        ${msg.role === "user"
-                          ? "rounded-tr-sm bg-gradient-to-br from-cyan-500 to-cyan-600 text-slate-950 shadow-md shadow-cyan-900/30"
-                          : "rounded-tl-sm border border-slate-700/60 bg-[#0d1a2d] text-slate-200 shadow-sm"
-                        }
-                      `}
+                      className={`flex max-w-[78%] flex-col gap-1 ${
+                        msg.role === "user" ? "items-end" : "items-start"
+                      }`}
                     >
-                      {msg.role === "assistant" ? (
-                        <div className="markdown-content prose-sm">
-                          <ReactMarkdown>
+                      <div
+                        className={`
+                          rounded-2xl px-4 py-3
+                          ${msg.role === "user"
+                            ? "rounded-tr-sm bg-gradient-to-br from-cyan-500 to-cyan-600 text-slate-950 shadow-md shadow-cyan-900/30"
+                            : "rounded-tl-sm border border-slate-700/60 bg-[#0d1a2d] text-slate-200 shadow-sm"
+                          }
+                        `}
+                      >
+                        {msg.role === "assistant" ? (
+                          <div className="markdown-content prose-sm">
+                            <ReactMarkdown>
+                              {msg.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm leading-relaxed">
                             {msg.content}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="text-sm leading-relaxed">
-                          {msg.content}
-                        </p>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Timestamp */}
+                      {msg.timestamp && (
+                        <span className="px-1 text-[10px] text-slate-600">
+                          {msg.timestamp}
+                        </span>
                       )}
                     </div>
 
@@ -776,7 +820,7 @@ export default function ChatPage() {
 
 
                 {/* -------------------------------------------
-                    AI THINKING BUBBLE
+                    TYPING INDICATOR
                 ------------------------------------------- */}
 
                 {sending && (
@@ -784,11 +828,18 @@ export default function ChatPage() {
                     <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 shadow shadow-cyan-500/20">
                       <Compass size={13} className="text-white" strokeWidth={2.3} />
                     </div>
-                    <div className="rounded-2xl rounded-tl-sm border border-slate-700/60 bg-[#0d1a2d] px-4 py-3.5 shadow-sm">
-                      <div className="flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-400 [animation-delay:0ms]" />
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-400 [animation-delay:160ms]" />
-                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-400 [animation-delay:320ms]" />
+                    <div className="flex flex-col gap-1">
+                      <div className="rounded-2xl rounded-tl-sm border border-slate-700/60 bg-[#0d1a2d] px-4 py-3.5 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-400 [animation-delay:0ms]" />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-400 [animation-delay:160ms]" />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-cyan-400 [animation-delay:320ms]" />
+                          </div>
+                          <span className="text-xs text-slate-500">
+                            KelanaAI is typing...
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
