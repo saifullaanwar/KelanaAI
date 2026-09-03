@@ -12,13 +12,17 @@ from services.trip_service import (
     get_transportation_recommendation,
 )
 
-from services.bedrock_service import get_ai_recommendation
+from services.bedrock_service import (
+    get_ai_recommendation,
+    get_ai_chat_response,
+)
 from services.auth_service import register, login
 from services.kb_service import ask_knowledge_base
 
 from database import SessionLocal, init_db
 from models.trip import Trip
-
+from models.conversation import Conversation
+from models.message import Message
 
 # ============================================================
 # JWT CONFIGURATION
@@ -33,6 +37,7 @@ security = HTTPBearer()
 # ============================================================
 # GET CURRENT USER FROM JWT
 # ============================================================
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -57,11 +62,7 @@ def get_current_user(
         db = SessionLocal()
 
         try:
-            user = (
-                db.query(User)
-                .filter(User.id == int(user_id))
-                .first()
-            )
+            user = db.query(User).filter(User.id == int(user_id)).first()
 
             if user is None:
                 raise HTTPException(
@@ -85,6 +86,7 @@ def get_current_user(
 # REQUEST MODELS
 # ============================================================
 
+
 class TripRequest(BaseModel):
     destination: str
     days: int
@@ -105,6 +107,10 @@ class LoginRequest(BaseModel):
 
 class QuestionRequest(BaseModel):
     question: str
+
+
+class MessageRequest(BaseModel):
+    content: str
 
 
 # ============================================================
@@ -140,27 +146,26 @@ init_db()
 # ROOT
 # ============================================================
 
+
 @app.get("/")
 def home():
-    return {
-        "message": "Welcome to KelanaAI"
-    }
+    return {"message": "Welcome to KelanaAI"}
 
 
 # ============================================================
 # HEALTH
 # ============================================================
 
+
 @app.get("/health")
 def health():
-    return {
-        "status": "OK"
-    }
+    return {"status": "OK"}
 
 
 # ============================================================
 # REGISTER USER
 # ============================================================
+
 
 @app.post("/api/v1/auth/register")
 def register_user(
@@ -197,6 +202,7 @@ def register_user(
 # LOGIN USER
 # ============================================================
 
+
 @app.post("/api/v1/auth/login")
 def login_user(
     request: LoginRequest,
@@ -227,6 +233,7 @@ def login_user(
 # GET CURRENT USER
 # ============================================================
 
+
 @app.get("/api/v1/auth/me")
 def get_me(
     user: User = Depends(get_current_user),
@@ -239,8 +246,316 @@ def get_me(
 
 
 # ============================================================
-# CREATE TRIP
+# CREATE CONVERSATION
 # ============================================================
+
+
+@app.post("/api/v1/conversations", status_code=201)
+def create_conversation(
+    user: User = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        conversation = Conversation(user_id=user.id)
+
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        return {"conversation_id": conversation.id}
+
+    finally:
+        db.close()
+
+
+# ============================================================
+# LIST CONVERSATIONS - ONLY CURRENT USER
+# ============================================================
+
+
+@app.get("/api/v1/conversations")
+def list_conversations(
+    user: User = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        conversations = (
+            db.query(Conversation)
+            .filter(Conversation.user_id == user.id)
+            .order_by(Conversation.created_at.desc())
+            .all()
+        )
+
+        return [
+            {
+                "id": conversation.id,
+                "title": conversation.title,
+                "created_at": conversation.created_at,
+            }
+            for conversation in conversations
+        ]
+
+    finally:
+        db.close()
+
+
+# ============================================================
+# SEND MESSAGE - CONVERSATION
+# ============================================================
+
+
+@app.post("/api/v1/conversations/{conversation_id}/messages")
+def send_message(
+    conversation_id: int,
+    request: MessageRequest,
+    user: User = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        # --------------------------------------------------------
+        # 1. Find conversation
+        # --------------------------------------------------------
+
+        conversation = (
+            db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        )
+
+        if conversation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found",
+            )
+
+        # --------------------------------------------------------
+        # 2. Ownership check
+        # --------------------------------------------------------
+
+        if conversation.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to access this conversation",
+            )
+
+        # --------------------------------------------------------
+        # 3. Save user message
+        # --------------------------------------------------------
+
+        user_message = Message(
+            conversation_id=conversation.id,
+            title=None,
+            role="user",
+            content=request.content,
+        )
+
+        db.add(user_message)
+        db.commit()
+        db.refresh(user_message)
+
+        # --------------------------------------------------------
+        # 4. Load previous messages
+        # --------------------------------------------------------
+
+        previous_messages = (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+
+        # --------------------------------------------------------
+        # 5. Build prompt for Amazon Bedrock
+        # --------------------------------------------------------
+
+        bedrock_messages = []
+
+        for message in previous_messages:
+            bedrock_messages.append(
+                {
+                    "role": message.role,
+                    "content": [{"text": message.content}],
+                }
+            )
+
+        # --------------------------------------------------------
+        # 6. Call Amazon Bedrock
+        # --------------------------------------------------------
+
+        ai_response = get_ai_chat_response(
+            messages=bedrock_messages,
+            user_name=user.name,
+        )
+
+        # --------------------------------------------------------
+        # 7. Save AI response
+        # --------------------------------------------------------
+
+        assistant_message = Message(
+            conversation_id=conversation.id,
+            title=None,
+            role="assistant",
+            content=ai_response,
+        )
+
+        db.add(assistant_message)
+        db.commit()
+        db.refresh(assistant_message)
+
+        # --------------------------------------------------------
+        # 8. Return response
+        # --------------------------------------------------------
+
+        return {
+            "conversation_id": conversation.id,
+            "message_id": assistant_message.id,
+            "role": "assistant",
+            "content": ai_response,
+        }
+
+    finally:
+        db.close()
+
+
+# ============================================================
+# GET MESSAGES - BY CONVERSATION ID
+# ============================================================
+
+
+@app.get("/api/v1/conversations/{conversation_id}/messages")
+def get_messages(
+    conversation_id: int,
+    user: User = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        # --------------------------------------------------------
+        # 1. Find conversation
+        # --------------------------------------------------------
+
+        conversation = (
+            db.query(Conversation)
+            .filter(Conversation.id == conversation_id)
+            .first()
+        )
+
+        if conversation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found",
+            )
+
+        # --------------------------------------------------------
+        # 2. Ownership check
+        # --------------------------------------------------------
+
+        if conversation.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to access this conversation",
+            )
+
+        # --------------------------------------------------------
+        # 3. Load messages ordered by created_at ASC
+        # --------------------------------------------------------
+
+        messages = (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+
+        return [
+            {
+                "id": message.id,
+                "conversation_id": message.conversation_id,
+                "role": message.role,
+                "content": message.content,
+                "created_at": message.created_at,
+            }
+            for message in messages
+        ]
+
+    finally:
+        db.close()
+
+
+# ============================================================
+# RENAME CONVERSATION
+# ============================================================
+
+
+class RenameConversationRequest(BaseModel):
+    title: str
+
+
+@app.patch("/api/v1/conversations/{conversation_id}")
+def rename_conversation(
+    conversation_id: int,
+    request: RenameConversationRequest,
+    user: User = Depends(get_current_user),
+):
+    # --------------------------------------------------------
+    # Validate title
+    # --------------------------------------------------------
+
+    title = request.title.strip()
+
+    if not title:
+        raise HTTPException(
+            status_code=422,
+            detail="Title cannot be empty.",
+        )
+
+    db = SessionLocal()
+
+    try:
+        # --------------------------------------------------------
+        # Find conversation
+        # --------------------------------------------------------
+
+        conversation = (
+            db.query(Conversation)
+            .filter(Conversation.id == conversation_id)
+            .first()
+        )
+
+        if conversation is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found.",
+            )
+
+        # --------------------------------------------------------
+        # Ownership check
+        # --------------------------------------------------------
+
+        if conversation.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have permission to rename this conversation.",
+            )
+
+        # --------------------------------------------------------
+        # Update title
+        # --------------------------------------------------------
+
+        conversation.title = title
+        db.commit()
+        db.refresh(conversation)
+
+        return {
+            "id": conversation.id,
+            "title": conversation.title,
+        }
+
+    finally:
+        db.close()
+
+
 
 @app.post("/api/v1/trips")
 def create_trip(
@@ -257,13 +572,9 @@ def create_trip(
         request.days,
     )
 
-    category = get_trip_category(
-        request.budget
-    )
+    category = get_trip_category(request.budget)
 
-    recommendation_transport = (
-        get_transportation_recommendation(category)
-    )
+    recommendation_transport = get_transportation_recommendation(category)
 
     # --------------------------------------------------------
     # Create database session
@@ -331,6 +642,7 @@ def create_trip(
 # TRIP CATEGORIES
 # ============================================================
 
+
 @app.get("/api/v1/trip-categories")
 def get_trip_categories():
     return [
@@ -343,6 +655,7 @@ def get_trip_categories():
 # ============================================================
 # DESTINATION RECOMMENDATIONS
 # ============================================================
+
 
 @app.get("/api/v1/recommendations")
 def get_recommendations():
@@ -357,6 +670,7 @@ def get_recommendations():
 # TRANSPORTATION RECOMMENDATIONS
 # ============================================================
 
+
 @app.get("/api/v1/transportations")
 def get_transportations():
     return [
@@ -370,6 +684,7 @@ def get_transportations():
 # GET ALL TRIPS - ONLY CURRENT USER
 # ============================================================
 
+
 @app.get("/api/v1/trips")
 def list_trips(
     user: User = Depends(get_current_user),
@@ -378,11 +693,7 @@ def list_trips(
     db = SessionLocal()
 
     try:
-        trips = (
-            db.query(Trip)
-            .filter(Trip.user_id == user.id)
-            .all()
-        )
+        trips = db.query(Trip).filter(Trip.user_id == user.id).all()
 
         return trips
 
@@ -394,6 +705,7 @@ def list_trips(
 # GET ONE TRIP - ONLY OWNER
 # ============================================================
 
+
 @app.get("/api/v1/trips/{trip_id}")
 def get_trip(
     trip_id: int,
@@ -403,11 +715,7 @@ def get_trip(
     db = SessionLocal()
 
     try:
-        trip = (
-            db.query(Trip)
-            .filter(Trip.id == trip_id)
-            .first()
-        )
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
 
         if trip is None:
             raise HTTPException(
@@ -444,6 +752,7 @@ def get_trip(
 # DELETE TRIP - ONLY OWNER
 # ============================================================
 
+
 @app.delete("/api/v1/trips/{trip_id}")
 def delete_trip(
     trip_id: int,
@@ -453,11 +762,7 @@ def delete_trip(
     db = SessionLocal()
 
     try:
-        trip = (
-            db.query(Trip)
-            .filter(Trip.id == trip_id)
-            .first()
-        )
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
 
         if trip is None:
             raise HTTPException(
@@ -478,9 +783,7 @@ def delete_trip(
         db.delete(trip)
         db.commit()
 
-        return {
-            "message": f"Trip with id {trip_id} deleted successfully"
-        }
+        return {"message": f"Trip with id {trip_id} deleted successfully"}
 
     finally:
         db.close()
@@ -489,6 +792,7 @@ def delete_trip(
 # ============================================================
 # UPDATE TRIP - ONLY OWNER
 # ============================================================
+
 
 @app.put("/api/v1/trips/{trip_id}")
 def update_trip(
@@ -505,11 +809,7 @@ def update_trip(
         # Find existing trip
         # ----------------------------------------------------
 
-        trip = (
-            db.query(Trip)
-            .filter(Trip.id == trip_id)
-            .first()
-        )
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
 
         if trip is None:
             raise HTTPException(
@@ -536,13 +836,9 @@ def update_trip(
             request.days,
         )
 
-        category = get_trip_category(
-            request.budget
-        )
+        category = get_trip_category(request.budget)
 
-        recommendation_transport = (
-            get_transportation_recommendation(category)
-        )
+        recommendation_transport = get_transportation_recommendation(category)
 
         # ----------------------------------------------------
         # Update database fields
@@ -586,6 +882,7 @@ def update_trip(
 # GENERATE AI RECOMMENDATION - ONLY OWNER
 # ============================================================
 
+
 @app.post("/api/v1/trips/{trip_id}/generate")
 def generate_trip_recommendation(
     trip_id: int,
@@ -600,11 +897,7 @@ def generate_trip_recommendation(
         # Retrieve existing trip
         # ----------------------------------------------------
 
-        trip = (
-            db.query(Trip)
-            .filter(Trip.id == trip_id)
-            .first()
-        )
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
 
         if trip is None:
             raise HTTPException(
@@ -661,6 +954,7 @@ def generate_trip_recommendation(
 # KNOWLEDGE BASE ASSISTANT
 # ============================================================
 
+
 @app.post("/api/v1/assistant")
 def ask_assistant(
     request: QuestionRequest,
@@ -671,9 +965,7 @@ def ask_assistant(
     # Send question to Knowledge Base
     # --------------------------------------------------------
 
-    result = ask_knowledge_base(
-        request.question
-    )
+    result = ask_knowledge_base(request.question)
 
     # --------------------------------------------------------
     # DEBUG: Log sources sebelum dikirim ke client

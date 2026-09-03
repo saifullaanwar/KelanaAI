@@ -5,6 +5,7 @@ import {
   History,
   Sparkles,
   Bot,
+  MessageCircle,
 } from "lucide-react";
 
 import AuthNav from "../components/AuthNav";
@@ -102,6 +103,19 @@ export default function RootLayout({
 
                 Assistant
               </Link>
+
+              {/* Chat */}
+              <Link
+                href="/chat"
+                className="group inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
+              >
+                <MessageCircle
+                  size={15}
+                  className="text-cyan-400 transition group-hover:scale-110"
+                />
+
+                Chat
+              </Link>
             </nav>
 
             {/* =================================================
@@ -125,7 +139,7 @@ export default function RootLayout({
               MOBILE NAVIGATION
               =================================================== */}
           <div className="border-t border-slate-800/40 md:hidden">
-            <nav className="mx-auto grid max-w-7xl grid-cols-3 gap-2 px-4 py-2">
+            <nav className="mx-auto grid max-w-7xl grid-cols-4 gap-2 px-4 py-2">
 
               {/* Plan Trip */}
               <Link
@@ -164,6 +178,19 @@ export default function RootLayout({
                 />
 
                 Assistant
+              </Link>
+
+              {/* Chat */}
+              <Link
+                href="/chat"
+                className="flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-800/70 hover:text-white"
+              >
+                <MessageCircle
+                  size={15}
+                  className="text-cyan-400"
+                />
+
+                Chat
               </Link>
 
             </nav>
